@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo } from 'react'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, CircleUserRound } from 'lucide-react'
 import { countries } from './data/countries'
 import { tourismCountries } from './data/tourismCountries'
 import { usStates } from './data/usStates'
@@ -18,6 +18,7 @@ const MapView = lazy(() => import('./components/MapView').then((module) => ({ de
 const PanelRouter = lazy(() => import('./components/panels/PanelRouter').then((module) => ({ default: module.PanelRouter })))
 
 export function App() {
+  const clearProfile = useAuthStore((state) => state.clearProfile)
   const unlocked = useAuthStore((state) => state.unlocked)
   const selectedProfile = useAuthStore((state) => state.selectedProfile)
   const entries = useTravelStore((state) => state.entries)
@@ -81,6 +82,16 @@ export function App() {
         <div className="font-medium text-white">{countries.length} countries, 50 states</div>
         <div>{status === 'error' ? error : status === 'ready' ? 'Autosaves to your configured storage.' : 'Loading storage...'}</div>
       </div>
+
+      <button
+        type="button"
+        aria-label="Switch user"
+        title="Switch user"
+        onClick={clearProfile}
+        className="fixed bottom-24 left-4 z-30 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/35 text-slate-300 backdrop-blur-xl transition hover:bg-white/[0.08] hover:text-white"
+      >
+        <CircleUserRound aria-hidden className="h-5 w-5" />
+      </button>
 
       <SearchOverlay />
       <Suspense fallback={null}>

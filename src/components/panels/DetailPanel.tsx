@@ -67,18 +67,23 @@ export function DetailPanel() {
       : tourism.seasonalNotes[filters.season]
   }, [filters.season, tourism])
 
-  const citySuggestions = useMemo(() => {
-    const saved = new Set((entry?.cities ?? []).map(normalizeText))
-    const query = normalizeText(city)
+  const citySuggestionOptions = useMemo(() => {
     if (entity?.type !== 'country') return []
     return cityOptionsForCountryCode(entity.countryCode, tourism?.cities ?? [])
-      .filter((cityItem) => !saved.has(normalizeText(cityItem.name)))
+  }, [entity?.countryCode, entity?.type, tourism?.cities])
+
+  const savedCityNames = useMemo(() => new Set((entry?.cities ?? []).map(normalizeText)), [entry?.cities])
+
+  const citySuggestions = useMemo(() => {
+    const query = normalizeText(city)
+    return citySuggestionOptions
+      .filter((cityItem) => !savedCityNames.has(cityItem.normalizedName))
       .filter((cityItem) => {
         if (!query) return true
-        return normalizeText(cityItem.name).includes(query)
+        return cityItem.normalizedName.includes(query)
       })
       .slice(0, 5)
-  }, [city, entity?.countryCode, entity?.type, entry?.cities, tourism?.cities])
+  }, [city, citySuggestionOptions, savedCityNames])
 
   if (!entity) {
     return (

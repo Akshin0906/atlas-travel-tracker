@@ -25,12 +25,10 @@ export function scoreCandidate(
   code?: string,
 ): number {
   const n = normalizeText(name)
-  if (n === query) return 120
+  const nameScore = scoreNormalizedName(query, n)
+  if (nameScore === 120) return nameScore
   if (code && query === code.toLowerCase()) return 110
-  if (n.startsWith(query)) return 100
-  if (n.split(/[\s,()-]+/).some((w) => w.startsWith(query))) return 80
-  if (n.includes(query)) return 60
-  let best = 0
+  let best = nameScore
   for (const alias of aliases) {
     const a = normalizeText(alias)
     if (a === query) best = Math.max(best, 95)
@@ -40,9 +38,17 @@ export function scoreCandidate(
   return best
 }
 
+export function scoreNormalizedName(query: string, normalizedName: string): number {
+  if (normalizedName === query) return 120
+  if (normalizedName.startsWith(query)) return 100
+  if (normalizedName.split(/[\s,()-]+/).some((w) => w.startsWith(query))) return 80
+  if (normalizedName.includes(query)) return 60
+  return 0
+}
+
 export interface SearchOptions {
-  countries?: Country[]
-  states?: USState[]
+  countries?: readonly Country[]
+  states?: readonly USState[]
   limit?: number
 }
 

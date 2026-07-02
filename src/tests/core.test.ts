@@ -8,6 +8,7 @@ import { cityOptionsForCountry } from '../lib/cities'
 import { searchEntitiesWithCities } from '../lib/citySearch'
 import { cityPinCandidates } from '../lib/cityPins'
 import { defaultFilters, filterCountries } from '../lib/filters'
+import { repeatedWorldOffsets, wrapHorizontalPan } from '../lib/mapWrap'
 import { DEFAULT_PIN_HASH, hashPin, isValidPinFormat, verifyPin } from '../lib/pin'
 import { randomIndex, randomTourismCountry } from '../lib/randomDestination'
 import { searchEntities } from '../lib/search'
@@ -85,6 +86,19 @@ describe('city pins', () => {
         countryCode: 'us',
       },
     ])
+  })
+})
+
+describe('map wrapping', () => {
+  it('normalizes horizontal pan into one screen period', () => {
+    expect(wrapHorizontalPan(1250, 1000)).toBe(250)
+    expect(wrapHorizontalPan(-1250, 1000)).toBe(-250)
+    expect(wrapHorizontalPan(0, 0)).toBe(0)
+  })
+
+  it('renders enough repeated worlds to cover the viewport', () => {
+    expect(repeatedWorldOffsets(500, 1200, 1)).toEqual([-2000, -1500, -1000, -500, 0, 500, 1000, 1500, 2000])
+    expect(repeatedWorldOffsets(500, 0, 1)).toEqual([0])
   })
 })
 

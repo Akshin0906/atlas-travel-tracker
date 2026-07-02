@@ -45,7 +45,7 @@ export function ProfileScreen() {
         <section className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
           <div className="mb-3 flex items-center justify-center gap-3 text-xs font-semibold uppercase text-slate-500">
             <span className="text-blue-100">Akshin</span>
-            <span className="rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 text-[10px] text-slate-400">vs</span>
+            <span className="rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 text-[10px] text-slate-400">&amp;</span>
             <span className="text-pink-100">Neha</span>
           </div>
           <StatRow label="Countries" akshin={stats.akshin.countries} neha={stats.neha.countries} />

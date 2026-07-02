@@ -42,7 +42,7 @@ function FloatingPaths({ position }: { position: 1 | -1 }) {
 
 function HomepageBackground() {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(10,132,255,0.16),transparent_30rem)]" />
       <FloatingPaths position={1} />
       <FloatingPaths position={-1} />
@@ -83,7 +83,7 @@ export function ProfileScreen() {
   return (
     <main className="relative isolate grid h-screen place-items-center overflow-x-hidden overflow-y-auto px-6 py-8 sm:py-10">
       <HomepageBackground />
-      <section className="glass relative z-20 w-full max-w-sm rounded-2xl p-6 text-center animate-pop-in">
+      <section className="homepage-card relative z-10 w-full max-w-sm rounded-2xl p-6 text-center">
         <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl border border-blue-200/25 bg-blue-400/[0.12] shadow-[0_0_28px_rgba(37,99,235,0.24)]">
           <Globe2 aria-hidden className="h-7 w-7 text-blue-50" />
         </div>

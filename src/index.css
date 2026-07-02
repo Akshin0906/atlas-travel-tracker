@@ -49,6 +49,13 @@ select:focus-visible {
   backdrop-filter: blur(24px) saturate(140%);
 }
 
+.homepage-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(180deg, rgba(8, 11, 20, 0.98), rgba(4, 6, 12, 0.95));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
+}
+
 .homepage-path {
   animation: homepage-path-drift var(--path-duration) linear var(--path-delay) infinite;
   stroke-dasharray: 360 920;

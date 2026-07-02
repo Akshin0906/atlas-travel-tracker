@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  background: #04060c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 30% 10%, rgba(10, 132, 255, 0.16), transparent 32rem),
+    linear-gradient(135deg, #04060c 0%, #0d1422 48%, #05070d 100%);
+  color: #f8fafc;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(10, 132, 255, 0.95);
+  outline-offset: 2px;
+}
+
+.glass {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(8, 11, 20, 0.72);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(24px) saturate(140%);
+}
+
+.scrollbar-thin {
+  scrollbar-color: rgba(148, 163, 184, 0.42) transparent;
+  scrollbar-width: thin;
+}

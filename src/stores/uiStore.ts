@@ -1,0 +1,102 @@
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import type { FilterState, ViewMode } from '../types'
+import { defaultFilters } from '../lib/filters'
+
+export type PanelId = 'detail' | 'filters' | 'stats' | 'favorites' | 'settings'
+export type SearchMode = 'select' | 'add-visited' | 'add-favorite'
+
+interface UIState {
+  viewMode: ViewMode
+  panel: PanelId | null
+  selectedKey: string | null
+  /** Bumping nonce asks the active view to fly to the entity. */
+  focus: { key: string; nonce: number } | null
+  searchOpen: boolean
+  searchMode: SearchMode
+  showVisited: boolean
+  showFavorites: boolean
+  showUSStates: boolean
+  filters: FilterState
+  toast: { id: number; message: string } | null
+
+  setViewMode: (mode: ViewMode) => void
+  openPanel: (panel: PanelId) => void
+  closePanel: () => void
+  selectEntity: (key: string, options?: { focus?: boolean }) => void
+  clearSelection: () => void
+  openSearch: (mode?: SearchMode) => void
+  closeSearch: () => void
+  setShowVisited: (v: boolean) => void
+  setShowFavorites: (v: boolean) => void
+  setShowUSStates: (v: boolean) => void
+  setFilters: (patch: Partial<FilterState>) => void
+  resetFilters: () => void
+  showToast: (message: string) => void
+  dismissToast: (id: number) => void
+}
+
+let toastId = 0
+
+export const useUIStore = create<UIState>()(
+  persist(
+    (set, get) => ({
+      viewMode: 'globe',
+      panel: null,
+      selectedKey: null,
+      focus: null,
+      searchOpen: false,
+      searchMode: 'select',
+      showVisited: true,
+      showFavorites: true,
+      showUSStates: true,
+      filters: defaultFilters,
+      toast: null,
+
+      setViewMode: (viewMode) => set({ viewMode }),
+
+      openPanel: (panel) => set({ panel: get().panel === panel ? null : panel, searchOpen: false }),
+
+      closePanel: () => set({ panel: null }),
+
+      selectEntity: (key, options) =>
+        set((state) => ({
+          selectedKey: key,
+          panel: 'detail',
+          searchOpen: false,
+          focus: options?.focus ? { key, nonce: (state.focus?.nonce ?? 0) + 1 } : state.focus,
+        })),
+
+      clearSelection: () =>
+        set((state) => ({
+          selectedKey: null,
+          panel: state.panel === 'detail' ? null : state.panel,
+        })),
+
+      openSearch: (mode = 'select') => set({ searchOpen: true, searchMode: mode }),
+
+      closeSearch: () => set({ searchOpen: false }),
+
+      setShowVisited: (showVisited) => set({ showVisited }),
+      setShowFavorites: (showFavorites) => set({ showFavorites }),
+      setShowUSStates: (showUSStates) => set({ showUSStates }),
+
+      setFilters: (patch) => set((state) => ({ filters: { ...state.filters, ...patch } })),
+
+      resetFilters: () => set({ filters: defaultFilters }),
+
+      showToast: (message) => set({ toast: { id: ++toastId, message } }),
+
+      dismissToast: (id) => set((state) => (state.toast?.id === id ? { toast: null } : state)),
+    }),
+    {
+      name: 'atlas.ui.v1',
+      partialize: (state) => ({
+        viewMode: state.viewMode,
+        showVisited: state.showVisited,
+        showFavorites: state.showFavorites,
+        showUSStates: state.showUSStates,
+      }),
+    },
+  ),
+)

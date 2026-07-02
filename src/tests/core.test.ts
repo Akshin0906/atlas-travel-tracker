@@ -1,0 +1,136 @@
+import { describe, expect, it } from 'vitest'
+import { tourismCountries } from '../data/tourismCountries'
+import { countries } from '../data/countries'
+import { defaultFilters, filterCountries } from '../lib/filters'
+import { DEFAULT_PIN_HASH, hashPin, isValidPinFormat, verifyPin } from '../lib/pin'
+import { searchEntities } from '../lib/search'
+import { computeStats } from '../lib/stats'
+import { addCityTag, countryEntity, createEntry, mergeEntry } from '../lib/travel'
+import type { TourismCountry, TravelEntry } from '../types'
+
+describe('PIN helpers', () => {
+  it('validates format and hashes the default PIN', async () => {
+    expect(isValidPinFormat('1234')).toBe(true)
+    expect(isValidPinFormat('12a4')).toBe(false)
+    expect(await hashPin('1234', 'atlas-pin-v1')).toBe(DEFAULT_PIN_HASH)
+    expect(await verifyPin('1234', DEFAULT_PIN_HASH, 'atlas-pin-v1')).toBe(true)
+  })
+})
+
+describe('travel entry helpers', () => {
+  it('creates, patches, and deduplicates city tags', () => {
+    const france = countries.find((country) => country.iso2 === 'FR')!
+    const entity = countryEntity(france)
+    const entry = createEntry(entity, '2026-01-01T00:00:00.000Z')
+    const patched = mergeEntry(entry, entity, { visited: true, cities: addCityTag(['Paris'], 'paris') }, '2026-01-02T00:00:00.000Z')
+
+    expect(patched.visited).toBe(true)
+    expect(patched.cities).toEqual(['Paris'])
+    expect(patched.updatedAt).toBe('2026-01-02T00:00:00.000Z')
+  })
+})
+
+describe('search', () => {
+  it('finds countries and US states by name or code', () => {
+    expect(searchEntities('japan')[0]?.entity.countryCode).toBe('JP')
+    expect(searchEntities('CA').some((result) => result.entity.key === 'us_state:US-CA')).toBe(true)
+  })
+})
+
+describe('filters', () => {
+  it('matches style, weather, region, season, and personal flags', () => {
+    const entries: Record<string, TravelEntry> = {
+      'country:FR': {
+        key: 'country:FR',
+        entityType: 'country',
+        countryCode: 'FR',
+        name: 'France',
+        visited: true,
+        favorite: true,
+        visits: [],
+        cities: [],
+        notes: '',
+        createdAt: '',
+        updatedAt: '',
+      },
+    }
+    const result = filterCountries(tourismCountries, entries, {
+      ...defaultFilters,
+      styles: ['food'],
+      weather: ['mediterranean'],
+      regions: ['Europe'],
+      visited: 'visited',
+      favoritesOnly: true,
+      season: 'spring',
+    })
+    expect(result.map((country) => country.iso2)).toContain('FR')
+  })
+})
+
+describe('stats', () => {
+  it('counts visited countries, states, favorites, continents, and top styles', () => {
+    const entries: TravelEntry[] = [
+      entry('country:FR', 'country', 'FR', undefined, 'France', true, true),
+      entry('us_state:US-CA', 'us_state', 'US', 'CA', 'California', true, true),
+    ]
+    const stats = computeStats(entries, { countries, tourism: tourismCountries })
+
+    expect(stats.countriesVisited).toBe(1)
+    expect(stats.statesVisited).toBe(1)
+    expect(stats.favoriteCountries).toBe(1)
+    expect(stats.favoriteStates).toBe(1)
+    expect(stats.continentsVisited).toContain('Europe')
+    expect(stats.topStyles[0]?.count).toBeGreaterThan(0)
+  })
+})
+
+describe('tourism data', () => {
+  it('has 100 unique countries with the expected tier shape', () => {
+    expect(tourismCountries).toHaveLength(100)
+    expect(new Set(tourismCountries.map((country) => country.iso2)).size).toBe(100)
+    for (const country of tourismCountries) {
+      expect(country.vacationStyle).toHaveLength(3)
+      expect(country.pros.length).toBeGreaterThan(0)
+      expect(country.cons.length).toBeGreaterThan(0)
+      expect(country.cities).toHaveLength(expectedCities(country))
+      for (const city of country.cities) expect(city.pois).toHaveLength(expectedPois(country))
+    }
+  })
+})
+
+function expectedCities(country: TourismCountry): number {
+  if (country.tier === 'major') return 5
+  if (country.tier === 'mid') return 3
+  return 1
+}
+
+function expectedPois(country: TourismCountry): number {
+  if (country.tier === 'major') return 5
+  if (country.tier === 'mid') return 3
+  return 1
+}
+
+function entry(
+  key: TravelEntry['key'],
+  entityType: TravelEntry['entityType'],
+  countryCode: TravelEntry['countryCode'],
+  stateCode: TravelEntry['stateCode'],
+  name: TravelEntry['name'],
+  visited: TravelEntry['visited'],
+  favorite: TravelEntry['favorite'],
+): TravelEntry {
+  return {
+    key,
+    entityType,
+    countryCode,
+    stateCode,
+    name,
+    visited,
+    favorite,
+    visits: [],
+    cities: [],
+    notes: '',
+    createdAt: '',
+    updatedAt: '',
+  }
+}

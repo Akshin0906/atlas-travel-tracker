@@ -56,27 +56,6 @@ select:focus-visible {
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
 }
 
-.homepage-path {
-  animation: homepage-path-drift var(--path-duration) linear var(--path-delay) infinite;
-  stroke-dasharray: 360 920;
-}
-
-@keyframes homepage-path-drift {
-  0% {
-    opacity: 0.36;
-    stroke-dashoffset: 0;
-  }
-
-  50% {
-    opacity: 0.72;
-  }
-
-  100% {
-    opacity: 0.36;
-    stroke-dashoffset: -1280;
-  }
-}
-
 .scrollbar-thin {
   scrollbar-color: rgba(148, 163, 184, 0.42) transparent;
   scrollbar-width: thin;

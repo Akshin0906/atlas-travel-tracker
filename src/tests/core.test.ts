@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import { COUNTRY_TOTAL, US_STATE_TOTAL } from '../data/counts'
 import { citiesByIso2 } from '../data/metroCities'
 import { tourismCountries } from '../data/tourismCountries'
 import { countries } from '../data/countries'
+import { usStates } from '../data/usStates'
 import { cityOptionsForCountry } from '../lib/cities'
+import { searchEntitiesWithCities } from '../lib/citySearch'
 import { cityPinCandidates } from '../lib/cityPins'
 import { defaultFilters, filterCountries } from '../lib/filters'
 import { DEFAULT_PIN_HASH, hashPin, isValidPinFormat, verifyPin } from '../lib/pin'
@@ -22,6 +25,13 @@ describe('PIN helpers', () => {
     expect(await hashPin('0906', 'atlas-pin-v1')).toBe(DEFAULT_PIN_HASH)
     expect(await verifyPin('0906', DEFAULT_PIN_HASH, 'atlas-pin-v1')).toBe(true)
     expect(await verifyPin('1234', DEFAULT_PIN_HASH, 'atlas-pin-v1')).toBe(false)
+  })
+})
+
+describe('summary data', () => {
+  it('keeps lightweight app-shell counts in sync with source data', () => {
+    expect(COUNTRY_TOTAL).toBe(countries.length)
+    expect(US_STATE_TOTAL).toBe(usStates.length)
   })
 })
 
@@ -85,7 +95,7 @@ describe('search', () => {
   })
 
   it('finds seeded tourism cities in the main search', () => {
-    const tokyo = searchEntities('Tokyo')[0]
+    const tokyo = searchEntitiesWithCities('Tokyo')[0]
     expect(tokyo).toMatchObject({
       kind: 'city',
       city: 'Tokyo',
@@ -95,7 +105,7 @@ describe('search', () => {
   })
 
   it('finds generated metro cities without surfacing city districts', () => {
-    const ahmedabad = searchEntities('Ahmedabad')[0]
+    const ahmedabad = searchEntitiesWithCities('Ahmedabad')[0]
     expect(ahmedabad).toMatchObject({
       kind: 'city',
       city: 'Ahmedabad',
@@ -103,7 +113,7 @@ describe('search', () => {
       sub: 'City in India',
     })
 
-    expect(searchEntities('Brooklyn').some((result) => result.kind === 'city' && result.entity.key === 'country:US' && result.city === 'Brooklyn')).toBe(false)
+    expect(searchEntitiesWithCities('Brooklyn').some((result) => result.kind === 'city' && result.entity.key === 'country:US' && result.city === 'Brooklyn')).toBe(false)
   })
 })
 

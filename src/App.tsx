@@ -1,16 +1,12 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
 import { CheckCircle2, CircleUserRound, Settings } from 'lucide-react'
-import { countries } from './data/countries'
-import { tourismCountries } from './data/tourismCountries'
-import { usStates } from './data/usStates'
+import { COUNTRY_TOTAL, US_STATE_TOTAL } from './data/counts'
 import { filterCountries, isFilterActive } from './lib/filters'
-import { randomTourismCountry } from './lib/randomDestination'
 import { entityKey } from './lib/travel'
 import { useCityPins } from './hooks/useCityPins'
 import { PinScreen } from './components/PinScreen'
 import { ProfileScreen } from './components/ProfileScreen'
 import { TopBar } from './components/TopBar'
-import { SearchOverlay } from './components/SearchOverlay'
 import { IconButton } from './components/ui'
 import { useAuthStore } from './stores/authStore'
 import { useTravelStore } from './stores/travelStore'
@@ -19,6 +15,7 @@ import { useUIStore } from './stores/uiStore'
 const GlobeView = lazy(() => import('./components/GlobeView').then((module) => ({ default: module.GlobeView })))
 const MapView = lazy(() => import('./components/MapView').then((module) => ({ default: module.MapView })))
 const PanelRouter = lazy(() => import('./components/panels/PanelRouter').then((module) => ({ default: module.PanelRouter })))
+const SearchOverlay = lazy(() => import('./components/SearchOverlay').then((module) => ({ default: module.SearchOverlay })))
 
 interface RandomDestinationRequest {
   key: string
@@ -36,6 +33,7 @@ export function App() {
   const error = useTravelStore((state) => state.error)
   const { dismissToast, filters, openPanel, openSearch, selectEntity, setViewMode, toast, viewMode } = useUIStore()
   const cityPins = useCityPins(entries)
+  const [matchedKeys, setMatchedKeys] = useState<Set<string> | null>(null)
   const [randomDestinationRequest, setRandomDestinationRequest] = useState<RandomDestinationRequest | null>(null)
   const [randomDestinationPending, setRandomDestinationPending] = useState(false)
 
@@ -62,34 +60,68 @@ export function App() {
     setRandomDestinationRequest(null)
   }, [randomDestinationPending, viewMode])
 
-  const matchedKeys = useMemo(() => {
-    if (!isFilterActive(filters)) return null
-    const keys = new Set(filterCountries(tourismCountries, entries, filters).map((tc) => entityKey('country', tc.iso2)))
-    const stateFriendly =
-      filters.styles.length === 0 &&
-      filters.weather.length === 0 &&
-      filters.regions.length === 0 &&
-      filters.season === 'overall'
-    if (stateFriendly) {
-      for (const state of usStates) {
-        const key = entityKey('us_state', 'US', state.code)
-        const entry = entries[key]
-        if (filters.visited === 'visited' && !entry?.visited) continue
-        if (filters.visited === 'unvisited' && entry?.visited) continue
-        if (filters.favoritesOnly && !entry?.favorite) continue
-        keys.add(key)
-      }
+  useEffect(() => {
+    if (!isFilterActive(filters)) {
+      setMatchedKeys(null)
+      return
     }
-    return keys
+
+    let cancelled = false
+
+    async function loadFilteredKeys() {
+      const [{ tourismCountries }, { usStates }] = await Promise.all([
+        import('./data/tourismCountries'),
+        import('./data/usStates'),
+      ])
+      if (cancelled) return
+
+      const keys = new Set(filterCountries(tourismCountries, entries, filters).map((tc) => entityKey('country', tc.iso2)))
+      const stateFriendly =
+        filters.styles.length === 0 &&
+        filters.weather.length === 0 &&
+        filters.regions.length === 0 &&
+        filters.season === 'overall'
+      if (stateFriendly) {
+        for (const state of usStates) {
+          const key = entityKey('us_state', 'US', state.code)
+          const entry = entries[key]
+          if (filters.visited === 'visited' && !entry?.visited) continue
+          if (filters.visited === 'unvisited' && entry?.visited) continue
+          if (filters.favoritesOnly && !entry?.favorite) continue
+          keys.add(key)
+        }
+      }
+      setMatchedKeys(keys)
+    }
+
+    void loadFilteredKeys().catch(() => {
+      if (!cancelled) setMatchedKeys(null)
+    })
+
+    return () => {
+      cancelled = true
+    }
   }, [entries, filters])
 
   const chooseRandomDestination = useCallback(() => {
     if (randomDestinationPending) return
-    const country = randomTourismCountry()
-    const key = entityKey('country', country.iso2)
     setViewMode('globe')
     setRandomDestinationPending(true)
-    setRandomDestinationRequest((current) => ({ key, nonce: (current?.nonce ?? 0) + 1 }))
+
+    async function loadRandomDestination() {
+      const [{ tourismCountries }, { randomTourismCountry }] = await Promise.all([
+        import('./data/tourismCountries'),
+        import('./lib/randomDestination'),
+      ])
+      const country = randomTourismCountry(tourismCountries)
+      const key = entityKey('country', country.iso2)
+      setRandomDestinationRequest((current) => ({ key, nonce: (current?.nonce ?? 0) + 1 }))
+    }
+
+    void loadRandomDestination().catch(() => {
+      setRandomDestinationPending(false)
+      setRandomDestinationRequest(null)
+    })
   }, [randomDestinationPending, setViewMode])
 
   const settleRandomDestination = useCallback(
@@ -123,7 +155,7 @@ export function App() {
       </main>
 
       <div className="pointer-events-none fixed bottom-4 left-4 z-20 max-w-sm rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-xs text-slate-300 backdrop-blur-xl">
-        <div className="font-medium text-white">{countries.length} countries, 50 states</div>
+        <div className="font-medium text-white">{COUNTRY_TOTAL} countries, {US_STATE_TOTAL} states</div>
         <div>{status === 'error' ? error : status === 'ready' ? 'Autosaves to your configured storage.' : 'Loading storage...'}</div>
       </div>
 
@@ -142,7 +174,9 @@ export function App() {
         />
       </div>
 
-      <SearchOverlay />
+      <Suspense fallback={null}>
+        <SearchOverlay />
+      </Suspense>
       <Suspense fallback={null}>
         <PanelRouter />
       </Suspense>

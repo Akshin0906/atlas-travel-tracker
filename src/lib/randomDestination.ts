@@ -1,4 +1,3 @@
-import { tourismCountries } from '../data/tourismCountries'
 import type { TourismCountry } from '../types'
 
 interface RandomValuesSource {
@@ -24,7 +23,7 @@ export function randomIndex(length: number, source: RandomValuesSource = globalT
 }
 
 export function randomTourismCountry(
-  countries: readonly TourismCountry[] = tourismCountries,
+  countries: readonly TourismCountry[],
   source?: RandomValuesSource,
 ): TourismCountry {
   return countries[randomIndex(countries.length, source)]

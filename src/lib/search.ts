@@ -1,9 +1,7 @@
-// Country / US-state / tourism-city search with diacritic folding and prefix ranking.
+// Country / US-state search with diacritic folding and prefix ranking.
 import type { Country, TravelEntity, USState } from '../types'
 import { countries as allCountries } from '../data/countries'
-import { tourismCountries as allTourismCountries } from '../data/tourismCountries'
 import { usStates as allStates } from '../data/usStates'
-import { cityOptionsForCountryCode } from './cities'
 import { normalizeText } from './text'
 import { countryEntity, stateEntity } from './travel'
 
@@ -20,7 +18,7 @@ export interface SearchResult {
   sub: string
 }
 
-function scoreCandidate(
+export function scoreCandidate(
   query: string,
   name: string,
   aliases: readonly string[] = [],
@@ -45,17 +43,15 @@ function scoreCandidate(
 export interface SearchOptions {
   countries?: Country[]
   states?: USState[]
-  tourismCountries?: typeof allTourismCountries
   limit?: number
 }
 
 export function searchEntities(query: string, options: SearchOptions = {}): SearchResult[] {
-  const { countries = allCountries, states = allStates, tourismCountries = allTourismCountries, limit = 12 } = options
+  const { countries = allCountries, states = allStates, limit = 12 } = options
   const q = normalizeText(query)
   if (!q) return []
 
   const results: SearchResult[] = []
-  const tourismByIso2 = new Map(tourismCountries.map((country) => [country.iso2, country]))
 
   for (const c of countries) {
     const score = scoreCandidate(q, c.name, c.aliases, c.iso2)
@@ -65,33 +61,18 @@ export function searchEntities(query: string, options: SearchOptions = {}): Sear
     const score = scoreCandidate(q, s.name, [], s.code)
     if (score > 0) results.push({ id: stateEntity(s).key, entity: stateEntity(s), kind: 'entity', score, sub: 'US state' })
   }
-  if (q.length >= 2) {
-    for (const country of countries) {
-      const tourismCountry = tourismByIso2.get(country.iso2)
-      const entity = countryEntity(country)
-      for (const city of cityOptionsForCountryCode(country.iso2, tourismCountry?.cities ?? [])) {
-        const score = scoreCandidate(q, city.name)
-        if (score <= 0) continue
-        results.push({
-          id: `${entity.key}:city:${normalizeText(city.name)}`,
-          entity,
-          kind: 'city',
-          city: city.name,
-          score: score - 5,
-          sub: `City in ${country.name}`,
-        })
-      }
-    }
-  }
 
-  return results
+  return sortSearchResults(results).slice(0, limit)
+}
+
+export function sortSearchResults(results: SearchResult[]): SearchResult[] {
+  return [...results]
     .sort(
       (a, b) =>
         b.score - a.score ||
         resultName(a).length - resultName(b).length ||
         resultName(a).localeCompare(resultName(b)),
     )
-    .slice(0, limit)
 }
 
 function resultName(result: SearchResult): string {

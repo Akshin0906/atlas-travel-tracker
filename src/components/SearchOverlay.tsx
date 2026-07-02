@@ -1,6 +1,6 @@
-import { KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { ArrowRight, Building2, CheckCircle2, Heart, MapPin, Search, X } from 'lucide-react'
-import { searchEntities } from '../lib/search'
+import { normalizeText, searchEntities, sortSearchResults, type SearchResult } from '../lib/search'
 import { useEscape } from '../hooks/useEscape'
 import { useTravelStore } from '../stores/travelStore'
 import { useUIStore } from '../stores/uiStore'
@@ -13,8 +13,8 @@ export function SearchOverlay() {
   const update = useTravelStore((state) => state.update)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
+  const [results, setResults] = useState<SearchResult[]>([])
   const inputRef = useRef<HTMLInputElement | null>(null)
-  const results = useMemo(() => searchEntities(query), [query])
 
   useEscape(closeSearch, searchOpen)
 
@@ -24,6 +24,29 @@ export function SearchOverlay() {
     setActive(0)
     requestAnimationFrame(() => inputRef.current?.focus())
   }, [searchOpen, searchMode])
+
+  useEffect(() => {
+    if (!searchOpen) return
+    let cancelled = false
+    const entityResults = searchEntities(query)
+    setResults(entityResults)
+
+    if (normalizeText(query).length < 2) return
+
+    async function loadCityResults() {
+      const { searchCityEntities } = await import('../lib/citySearch')
+      if (cancelled) return
+      setResults(sortSearchResults([...entityResults, ...searchCityEntities(query)]).slice(0, 12))
+    }
+
+    void loadCityResults().catch(() => {
+      if (!cancelled) setResults(entityResults)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [query, searchOpen])
 
   if (!searchOpen) return null
 

@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Default PIN: `0000`.
+Default PIN: `0906`.
 
 ## Environment
 
@@ -33,7 +33,7 @@ If Supabase variables are empty, Atlas falls back to browser `localStorage`.
 Generate a PIN hash:
 
 ```bash
-npm run pin:hash -- 0000
+npm run pin:hash -- 0906
 ```
 
 The PIN is casual privacy only. In a static frontend, the hash ships in the browser bundle and can be brute-forced. Do not store sensitive data here.

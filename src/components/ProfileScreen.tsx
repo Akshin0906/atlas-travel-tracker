@@ -42,15 +42,15 @@ export function ProfileScreen() {
         </div>
         <h1 className="font-display text-3xl font-semibold tracking-normal text-white">Welcome to Atlas</h1>
         <p className="mt-2 text-sm text-slate-400">Choose whose travel map to open.</p>
-        <section className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
-          <div className="mb-3 flex items-center justify-center gap-3 text-xs font-semibold uppercase text-slate-500">
-            <span className="text-blue-100">Akshin</span>
-            <span className="rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 text-[10px] text-slate-400">&amp;</span>
-            <span className="text-pink-100">Neha</span>
+        <section className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-3 sm:p-4">
+          <div className="mx-auto grid w-full max-w-[19rem] grid-cols-[minmax(3rem,1fr)_minmax(5.75rem,1.15fr)_minmax(3rem,1fr)] items-center gap-x-2 sm:gap-x-3">
+            <span className="text-center text-xs font-semibold uppercase tracking-wide text-blue-100">Akshin</span>
+            <span className="justify-self-center rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 text-[10px] font-semibold text-slate-400">&amp;</span>
+            <span className="text-center text-xs font-semibold uppercase tracking-wide text-pink-100">Neha</span>
+            <StatRow label="Countries" akshin={stats.akshin.countries} neha={stats.neha.countries} />
+            <div className="col-span-3 my-3 border-t border-white/10" />
+            <StatRow label="U.S. States" akshin={stats.akshin.states} neha={stats.neha.states} />
           </div>
-          <StatRow label="Countries" akshin={stats.akshin.countries} neha={stats.neha.countries} />
-          <div className="my-3 border-t border-white/10" />
-          <StatRow label="U.S. States" akshin={stats.akshin.states} neha={stats.neha.states} />
           {statsFailed ? <p className="mt-3 text-xs text-slate-500">Stats unavailable right now.</p> : null}
         </section>
         <div className="mt-6 grid gap-3">
@@ -67,14 +67,10 @@ export function ProfileScreen() {
 
 function StatRow({ akshin, label, neha }: { akshin: number; label: string; neha: number }) {
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
-      <div className="text-right">
-        <div className="text-3xl font-semibold leading-none text-blue-200">{akshin}</div>
-      </div>
-      <div className="min-w-20 pb-1 text-center text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="text-left">
-        <div className="text-3xl font-semibold leading-none text-pink-200">{neha}</div>
-      </div>
-    </div>
+    <>
+      <div className="pt-4 text-center text-2xl font-semibold leading-none text-blue-200 tabular-nums sm:text-3xl">{akshin}</div>
+      <div className="pt-4 text-center text-[11px] font-medium uppercase leading-tight tracking-wide text-slate-500 sm:text-xs">{label}</div>
+      <div className="pt-4 text-center text-2xl font-semibold leading-none text-pink-200 tabular-nums sm:text-3xl">{neha}</div>
+    </>
   )
 }

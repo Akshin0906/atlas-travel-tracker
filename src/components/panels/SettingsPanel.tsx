@@ -28,9 +28,6 @@ export function SettingsPanel() {
           Lock Atlas
         </Button>
       </div>
-      <p className="mt-5 text-xs leading-5 text-slate-500">
-        The PIN gate is casual privacy only. Supabase anon access for this personal static app should not hold sensitive data.
-      </p>
     </PanelShell>
   )
 }

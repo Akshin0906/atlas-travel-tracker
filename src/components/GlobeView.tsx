@@ -1,15 +1,21 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from 'react'
 import { geoGraticule, geoOrthographic, geoPath } from 'd3-geo'
+import { Minus, Plus, RotateCcw } from 'lucide-react'
 import { useContainerSize } from '../hooks/useContainerSize'
 import { useGeoData } from '../hooks/useGeoData'
+import { clamp } from '../lib/utils'
 import { entityColors, visualStateFor } from '../lib/visuals'
 import { useTravelStore } from '../stores/travelStore'
 import { useUIStore } from '../stores/uiStore'
 import type { EntityFeature } from '../lib/geo'
+import { IconButton } from './ui'
 
 interface GlobeViewProps {
   matchedKeys: Set<string> | null
 }
+
+const MIN_GLOBE_ZOOM = 0.75
+const MAX_GLOBE_ZOOM = 2.8
 
 export function GlobeView({ matchedKeys }: GlobeViewProps) {
   const { data, error } = useGeoData()
@@ -25,6 +31,7 @@ export function GlobeView({ matchedKeys }: GlobeViewProps) {
   const nextRotationRef = useRef<[number, number] | null>(null)
   const [hovered, setHovered] = useState<string | null>(null)
   const [rotation, setRotation] = useState<[number, number]>([-22, -12])
+  const [zoom, setZoom] = useState(1)
   const entries = useTravelStore((state) => state.entries)
   const { focus, selectedKey, selectEntity, showFavorites, showUSStates, showVisited } = useUIStore()
 
@@ -36,11 +43,11 @@ export function GlobeView({ matchedKeys }: GlobeViewProps) {
   const projection = useMemo(() => {
     if (width < 1 || height < 1) return null
     return geoOrthographic()
-      .scale(Math.min(width, height) * 0.36)
+      .scale(Math.min(width, height) * 0.36 * zoom)
       .translate([width / 2, height / 2])
       .rotate(rotation)
       .clipAngle(90)
-  }, [height, rotation, width])
+  }, [height, rotation, width, zoom])
 
   const path = useMemo(() => (projection ? geoPath(projection) : null), [projection])
   const graticule = useMemo(() => geoGraticule().step([20, 20])(), [])
@@ -80,6 +87,10 @@ export function GlobeView({ matchedKeys }: GlobeViewProps) {
       if (nextRotationRef.current) setRotation(nextRotationRef.current)
       nextRotationRef.current = null
     })
+  }
+
+  function updateZoom(next: number | ((current: number) => number)) {
+    setZoom((current) => clamp(typeof next === 'function' ? next(current) : next, MIN_GLOBE_ZOOM, MAX_GLOBE_ZOOM))
   }
 
   function entityKeyFromTarget(target: EventTarget | null): string | null {
@@ -126,11 +137,17 @@ export function GlobeView({ matchedKeys }: GlobeViewProps) {
     dragRef.current = null
   }
 
+  function wheelZoom(event: WheelEvent<SVGSVGElement>) {
+    event.preventDefault()
+    updateZoom((current) => current * (event.deltaY > 0 ? 0.9 : 1.1))
+  }
+
   return (
     <div ref={ref} className="absolute inset-0">
       {!data || width === 0 ? (
         <div className="grid h-full place-items-center text-sm text-slate-400">{error ?? 'Loading globe...'}</div>
       ) : path && projection ? (
+        <>
         <svg
           className="absolute inset-0 cursor-grab active:cursor-grabbing"
           width={width}
@@ -142,6 +159,7 @@ export function GlobeView({ matchedKeys }: GlobeViewProps) {
           onPointerMove={drag}
           onPointerUp={endDrag}
           onPointerCancel={cancelDrag}
+          onWheel={wheelZoom}
         >
           <defs>
             <radialGradient id="globeWater" cx="42%" cy="36%" r="64%">
@@ -172,6 +190,12 @@ export function GlobeView({ matchedKeys }: GlobeViewProps) {
           })}
           <circle cx={width / 2} cy={height / 2} r={projection.scale()} fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1.4" />
         </svg>
+        <div className="glass absolute bottom-6 right-6 z-20 flex rounded-xl p-1">
+          <IconButton icon={Plus} label="Zoom in" onClick={() => updateZoom((current) => current * 1.25)} className="h-9 w-9 border-0 bg-transparent" />
+          <IconButton icon={Minus} label="Zoom out" onClick={() => updateZoom((current) => current / 1.25)} className="h-9 w-9 border-0 bg-transparent" />
+          <IconButton icon={RotateCcw} label="Reset globe zoom" onClick={() => setZoom(1)} className="h-9 w-9 border-0 bg-transparent" />
+        </div>
+        </>
       ) : null}
     </div>
   )

@@ -9,6 +9,7 @@ import { DEFAULT_PIN_HASH, hashPin, isValidPinFormat, verifyPin } from '../lib/p
 import { randomIndex, randomTourismCountry } from '../lib/randomDestination'
 import { searchEntities } from '../lib/search'
 import { computeStats } from '../lib/stats'
+import { profileStatsFromEntries } from '../lib/profileStats'
 import { entryToRow, rowToEntry } from '../lib/storage'
 import { addCityTag, countryEntity, createEntry, mergeEntry } from '../lib/travel'
 import type { TourismCountry, TravelEntry } from '../types'
@@ -149,6 +150,16 @@ describe('stats', () => {
     expect(stats.favoriteStates).toBe(1)
     expect(stats.continentsVisited).toContain('Europe')
     expect(stats.topStyles[0]?.count).toBeGreaterThan(0)
+  })
+
+  it('counts visited countries and states for profile comparison', () => {
+    const stats = profileStatsFromEntries([
+      entry('country:FR', 'country', 'FR', undefined, 'France', true, false),
+      entry('country:JP', 'country', 'JP', undefined, 'Japan', false, false),
+      entry('us_state:US-CA', 'us_state', 'US', 'CA', 'California', true, false),
+    ])
+
+    expect(stats).toEqual({ countries: 1, states: 1 })
   })
 })
 

@@ -23,8 +23,13 @@ const MAX_ZOOM = 8
 export function MapView({ cityPins, matchedKeys }: MapViewProps) {
   const { data, error } = useGeoData()
   const { ref, width, height } = useContainerSize<HTMLDivElement>()
-  const dragRef = useRef<{ x: number; y: number; pan: { x: number; y: number }; moved: boolean } | null>(null)
-  const suppressClickRef = useRef(false)
+  const dragRef = useRef<{
+    x: number
+    y: number
+    pan: { x: number; y: number }
+    key: string | null
+    moved: boolean
+  } | null>(null)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [userZoom, setUserZoom] = useState(1)
   const entries = useTravelStore((state) => state.entries)
@@ -80,9 +85,21 @@ export function MapView({ cityPins, matchedKeys }: MapViewProps) {
     clearSelection()
   }
 
+  function entityKeyFromTarget(target: EventTarget | null): string | null {
+    return target instanceof Element
+      ? target.closest<SVGPathElement>('[data-entity-key]')?.dataset.entityKey ?? null
+      : null
+  }
+
   function startPan(event: PointerEvent<SVGSVGElement>) {
     event.currentTarget.setPointerCapture(event.pointerId)
-    dragRef.current = { x: event.clientX, y: event.clientY, pan, moved: false }
+    dragRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      pan,
+      key: entityKeyFromTarget(event.target),
+      moved: false,
+    }
   }
 
   function dragMap(event: PointerEvent<SVGSVGElement>) {
@@ -94,14 +111,20 @@ export function MapView({ cityPins, matchedKeys }: MapViewProps) {
     setPan({ x: start.pan.x + x, y: start.pan.y + y })
   }
 
+  function releasePointer(event: PointerEvent<SVGSVGElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+  }
+
   function endPan(event: PointerEvent<SVGSVGElement>) {
-    const moved = dragRef.current?.moved
-    event.currentTarget.releasePointerCapture(event.pointerId)
+    const clickedKey = dragRef.current?.moved === false ? dragRef.current.key : null
+    releasePointer(event)
     dragRef.current = null
-    suppressClickRef.current = Boolean(moved)
-    window.setTimeout(() => {
-      suppressClickRef.current = false
-    }, 0)
+    if (clickedKey) selectEntity(clickedKey, { focus: true })
+  }
+
+  function cancelPan(event: PointerEvent<SVGSVGElement>) {
+    releasePointer(event)
+    dragRef.current = null
   }
 
   function wheelZoom(event: WheelEvent<SVGSVGElement>) {
@@ -122,7 +145,7 @@ export function MapView({ cityPins, matchedKeys }: MapViewProps) {
           onPointerDown={startPan}
           onPointerMove={dragMap}
           onPointerUp={endPan}
-          onPointerCancel={endPan}
+          onPointerCancel={cancelPan}
           onWheel={wheelZoom}
         >
           <defs>
@@ -152,10 +175,8 @@ export function MapView({ cityPins, matchedKeys }: MapViewProps) {
                   stroke={colors.stroke}
                   strokeWidth={(item.entity.key === selectedKey ? 1.5 : 0.7) / zoom}
                   vectorEffect="non-scaling-stroke"
+                  data-entity-key={item.entity.key}
                   className="cursor-pointer transition-colors duration-200 hover:fill-blue-400/40"
-                  onClick={() => {
-                    if (!suppressClickRef.current) selectEntity(item.entity.key, { focus: true })
-                  }}
                 />
               )
             })}

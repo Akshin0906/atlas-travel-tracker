@@ -12,8 +12,9 @@ import {
 } from 'lucide-react'
 import { tourismByIso2 } from '../../data/tourismCountries'
 import { SEASON_LABELS } from '../../data/tags'
+import { cityOptionsForCountry } from '../../lib/cities'
 import { entityFromKey } from '../../lib/entities'
-import { normalizeText } from '../../lib/search'
+import { normalizeText } from '../../lib/text'
 import { cn, flagEmoji, formatDate } from '../../lib/utils'
 import { useTravelStore } from '../../stores/travelStore'
 import { useUIStore } from '../../stores/uiStore'
@@ -69,7 +70,7 @@ export function DetailPanel() {
   const citySuggestions = useMemo(() => {
     const saved = new Set((entry?.cities ?? []).map(normalizeText))
     const query = normalizeText(city)
-    return (tourism?.cities ?? [])
+    return (tourism ? cityOptionsForCountry(tourism) : [])
       .filter((cityItem) => !saved.has(normalizeText(cityItem.name)))
       .filter((cityItem) => {
         if (!query) return true
@@ -164,7 +165,11 @@ export function DetailPanel() {
                           className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm text-slate-200 transition hover:bg-white/[0.08] hover:text-white"
                         >
                           <span className="truncate">{cityItem.name}</span>
-                          <span className="text-xs text-slate-500">{cityItem.pois.length === 1 ? '1 highlight' : `${cityItem.pois.length} highlights`}</span>
+                          <span className="text-xs text-slate-500">
+                            {cityItem.source === 'guide'
+                              ? cityItem.highlightCount === 1 ? '1 highlight' : `${cityItem.highlightCount} highlights`
+                              : 'Major city'}
+                          </span>
                         </button>
                       ))}
                     </div>

@@ -3,7 +3,11 @@ import type { Country, TravelEntity, USState } from '../types'
 import { countries as allCountries } from '../data/countries'
 import { tourismCountries as allTourismCountries } from '../data/tourismCountries'
 import { usStates as allStates } from '../data/usStates'
+import { cityOptionsForCountry } from './cities'
+import { normalizeText } from './text'
 import { countryEntity, stateEntity } from './travel'
+
+export { normalizeText } from './text'
 
 export interface SearchResult {
   id: string
@@ -14,14 +18,6 @@ export interface SearchResult {
   score: number
   /** Secondary label shown in the dropdown, e.g. region or "US state". */
   sub: string
-}
-
-export function normalizeText(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .trim()
 }
 
 function scoreCandidate(
@@ -73,7 +69,7 @@ export function searchEntities(query: string, options: SearchOptions = {}): Sear
     const country = countriesByIso2.get(tourismCountry.iso2)
     if (!country) continue
     const entity = countryEntity(country)
-    for (const city of tourismCountry.cities) {
+    for (const city of cityOptionsForCountry(tourismCountry)) {
       const score = scoreCandidate(q, city.name)
       if (score <= 0) continue
       results.push({

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { metroCitiesByIso2 } from '../data/metroCities'
 import { tourismCountries } from '../data/tourismCountries'
 import { countries } from '../data/countries'
+import { cityOptionsForCountry } from '../lib/cities'
 import { cityPinCandidates } from '../lib/cityPins'
 import { defaultFilters, filterCountries } from '../lib/filters'
 import { DEFAULT_PIN_HASH, hashPin, isValidPinFormat, verifyPin } from '../lib/pin'
@@ -89,6 +91,18 @@ describe('search', () => {
       sub: 'City in Japan',
     })
   })
+
+  it('finds generated metro cities without surfacing city districts', () => {
+    const ahmedabad = searchEntities('Ahmedabad')[0]
+    expect(ahmedabad).toMatchObject({
+      kind: 'city',
+      city: 'Ahmedabad',
+      entity: { key: 'country:IN' },
+      sub: 'City in India',
+    })
+
+    expect(searchEntities('Brooklyn').some((result) => result.kind === 'city' && result.entity.key === 'country:US')).toBe(false)
+  })
 })
 
 describe('filters', () => {
@@ -149,6 +163,23 @@ describe('tourism data', () => {
       expect(country.cities).toHaveLength(expectedCities(country))
       for (const city of country.cities) expect(city.pois).toHaveLength(expectedPois(country))
     }
+  })
+
+  it('has broad metro-city autocomplete coverage for every tourism country', () => {
+    expect(Object.keys(metroCitiesByIso2)).toHaveLength(100)
+    for (const country of tourismCountries) {
+      expect(metroCitiesByIso2[country.iso2 as keyof typeof metroCitiesByIso2].length).toBeGreaterThan(0)
+    }
+
+    expect(metroCitiesByIso2.FR).toContain('Paris')
+    expect(metroCitiesByIso2.FR).not.toContain('Paris 15 Vaugirard')
+    expect(metroCitiesByIso2.US).toContain('New York City')
+    expect(metroCitiesByIso2.US).not.toContain('Brooklyn')
+  })
+
+  it('keeps curated tourism towns in country city suggestions', () => {
+    const slovenia = tourismCountries.find((country) => country.iso2 === 'SI')!
+    expect(cityOptionsForCountry(slovenia).map((city) => city.name)).toContain('Bled')
   })
 })
 

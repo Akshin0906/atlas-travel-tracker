@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Heart, Search } from 'lucide-react'
 import { entityFromKey } from '../../lib/entities'
-import { normalizeText } from '../../lib/search'
+import { normalizeText } from '../../lib/text'
 import { flagEmoji } from '../../lib/utils'
 import { useTravelStore } from '../../stores/travelStore'
 import { useUIStore } from '../../stores/uiStore'

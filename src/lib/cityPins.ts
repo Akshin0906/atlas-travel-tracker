@@ -1,5 +1,5 @@
 import type { TravelEntry } from '../types'
-import { normalizeText } from './search'
+import { normalizeText } from './text'
 
 const CITY_PIN_CACHE_KEY = 'atlas.cityPins.v1'
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'

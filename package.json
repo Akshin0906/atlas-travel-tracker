@@ -11,6 +11,7 @@
     "test:ci": "vitest run",
     "typecheck": "tsc --noEmit",
     "generate:countries": "node scripts/generateCountries.mjs",
+    "generate:cities": "python3 scripts/generateMetroCities.py",
     "pin:hash": "node scripts/hashPin.mjs"
   },
   "dependencies": {

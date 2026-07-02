@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { tourismByIso2 } from '../../data/tourismCountries'
 import { SEASON_LABELS } from '../../data/tags'
-import { cityOptionsForCountry } from '../../lib/cities'
+import { cityOptionsForCountryCode } from '../../lib/cities'
 import { entityFromKey } from '../../lib/entities'
 import { normalizeText } from '../../lib/text'
 import { cn, flagEmoji, formatDate } from '../../lib/utils'
@@ -70,14 +70,15 @@ export function DetailPanel() {
   const citySuggestions = useMemo(() => {
     const saved = new Set((entry?.cities ?? []).map(normalizeText))
     const query = normalizeText(city)
-    return (tourism ? cityOptionsForCountry(tourism) : [])
+    if (entity?.type !== 'country') return []
+    return cityOptionsForCountryCode(entity.countryCode, tourism?.cities ?? [])
       .filter((cityItem) => !saved.has(normalizeText(cityItem.name)))
       .filter((cityItem) => {
         if (!query) return true
         return normalizeText(cityItem.name).includes(query)
       })
       .slice(0, 5)
-  }, [city, entry?.cities, tourism])
+  }, [city, entity?.countryCode, entity?.type, entry?.cities, tourism?.cities])
 
   if (!entity) {
     return (
@@ -168,7 +169,7 @@ export function DetailPanel() {
                           <span className="text-xs text-slate-500">
                             {cityItem.source === 'guide'
                               ? cityItem.highlightCount === 1 ? '1 highlight' : `${cityItem.highlightCount} highlights`
-                              : 'Major city'}
+                              : 'City'}
                           </span>
                         </button>
                       ))}

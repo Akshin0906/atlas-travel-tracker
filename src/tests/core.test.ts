@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { metroCitiesByIso2 } from '../data/metroCities'
+import { citiesByIso2 } from '../data/metroCities'
 import { tourismCountries } from '../data/tourismCountries'
 import { countries } from '../data/countries'
 import { cityOptionsForCountry } from '../lib/cities'
@@ -11,6 +11,7 @@ import { searchEntities } from '../lib/search'
 import { computeStats } from '../lib/stats'
 import { profileStatsFromEntries } from '../lib/profileStats'
 import { entryToRow, rowToEntry } from '../lib/storage'
+import { normalizeText } from '../lib/text'
 import { addCityTag, countryEntity, createEntry, mergeEntry } from '../lib/travel'
 import type { TourismCountry, TravelEntry } from '../types'
 
@@ -102,7 +103,7 @@ describe('search', () => {
       sub: 'City in India',
     })
 
-    expect(searchEntities('Brooklyn').some((result) => result.kind === 'city' && result.entity.key === 'country:US')).toBe(false)
+    expect(searchEntities('Brooklyn').some((result) => result.kind === 'city' && result.entity.key === 'country:US' && result.city === 'Brooklyn')).toBe(false)
   })
 })
 
@@ -176,16 +177,26 @@ describe('tourism data', () => {
     }
   })
 
-  it('has broad metro-city autocomplete coverage for every tourism country', () => {
-    expect(Object.keys(metroCitiesByIso2)).toHaveLength(100)
-    for (const country of tourismCountries) {
-      expect(metroCitiesByIso2[country.iso2 as keyof typeof metroCitiesByIso2].length).toBeGreaterThan(0)
+  it('has deduplicated city autocomplete coverage for every country', () => {
+    const expectedCodes = countries.map((country) => country.iso2).sort()
+    expect(Object.keys(citiesByIso2).sort()).toEqual(expectedCodes)
+
+    const emptyCityCountries = new Set(['IO', 'UM'])
+    const districtLikeName = /\b(central business district|commune d'arrondissement|arrondissement|borough|county|delegation|district|distrito|municipality|prefecture|subdistrict|township|ward|woleswali|woluswali|wuleswali|sector\s+\d+|zone\s+\d+)\b/i
+    for (const country of countries) {
+      const cityNames = citiesByIso2[country.iso2]
+      if (!emptyCityCountries.has(country.iso2)) expect(cityNames.length).toBeGreaterThan(0)
+
+      const normalizedNames = cityNames.map(normalizeText)
+      expect(new Set(normalizedNames).size).toBe(normalizedNames.length)
+      expect(cityNames.find((name) => districtLikeName.test(name))).toBeUndefined()
     }
 
-    expect(metroCitiesByIso2.FR).toContain('Paris')
-    expect(metroCitiesByIso2.FR).not.toContain('Paris 15 Vaugirard')
-    expect(metroCitiesByIso2.US).toContain('New York City')
-    expect(metroCitiesByIso2.US).not.toContain('Brooklyn')
+    expect(citiesByIso2.FR).toContain('Paris')
+    expect(citiesByIso2.FR).not.toContain('Paris 15 Vaugirard')
+    expect(citiesByIso2.US).toContain('New York City')
+    expect(citiesByIso2.US).not.toContain('Brooklyn')
+    expect(citiesByIso2.AF).not.toContain('Wuleswali Bihsud')
   })
 
   it('keeps curated tourism towns in country city suggestions', () => {

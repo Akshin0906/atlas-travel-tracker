@@ -1,5 +1,5 @@
-import { metroCitiesByIso2, type MetroCityCountryCode } from '../data/metroCities'
-import type { TourismCountry } from '../types'
+import { citiesByIso2 } from '../data/metroCities'
+import type { TourismCity, TourismCountry } from '../types'
 import { normalizeText } from './text'
 
 export interface CountryCityOption {
@@ -9,13 +9,17 @@ export interface CountryCityOption {
 }
 
 export function cityOptionsForCountry(country: TourismCountry): CountryCityOption[] {
+  return cityOptionsForCountryCode(country.iso2, country.cities)
+}
+
+export function cityOptionsForCountryCode(iso2: string, guideCities: readonly TourismCity[] = []): CountryCityOption[] {
   const options = new Map<string, CountryCityOption>()
 
-  for (const name of metroCitiesForCountry(country.iso2)) {
+  for (const name of citiesForCountry(iso2)) {
     options.set(normalizeText(name), { name, highlightCount: 0, source: 'metro' })
   }
 
-  for (const city of country.cities) {
+  for (const city of guideCities) {
     options.set(normalizeText(city.name), {
       name: city.name,
       highlightCount: city.pois.length,
@@ -26,7 +30,7 @@ export function cityOptionsForCountry(country: TourismCountry): CountryCityOptio
   return [...options.values()]
 }
 
-function metroCitiesForCountry(iso2: string): readonly string[] {
-  if (iso2 in metroCitiesByIso2) return metroCitiesByIso2[iso2 as MetroCityCountryCode]
+export function citiesForCountry(iso2: string): readonly string[] {
+  if (iso2 in citiesByIso2) return citiesByIso2[iso2]
   return []
 }

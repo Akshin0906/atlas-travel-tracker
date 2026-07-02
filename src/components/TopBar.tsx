@@ -1,19 +1,24 @@
 import {
   BarChart3,
+  Dice5,
   Eye,
   Globe2,
   Heart,
   Map,
   Plus,
   Search,
-  Settings,
   SlidersHorizontal,
   Star,
 } from 'lucide-react'
 import { useUIStore } from '../stores/uiStore'
 import { Button, IconButton } from './ui'
 
-export function TopBar() {
+interface TopBarProps {
+  randomDestinationPending: boolean
+  onRandomDestination: () => void
+}
+
+export function TopBar({ randomDestinationPending, onRandomDestination }: TopBarProps) {
   const {
     openSearch,
     openPanel,
@@ -53,7 +58,14 @@ export function TopBar() {
             <IconButton icon={SlidersHorizontal} label="Filters" onClick={() => openPanel('filters')} className="h-9 w-9 border-0 bg-transparent" />
             <IconButton icon={BarChart3} label="Stats" onClick={() => openPanel('stats')} className="h-9 w-9 border-0 bg-transparent" />
             <IconButton icon={Star} label="Favorites" onClick={() => openPanel('favorites')} className="h-9 w-9 border-0 bg-transparent" />
-            <IconButton icon={Settings} label="Settings" onClick={() => openPanel('settings')} className="h-9 w-9 border-0 bg-transparent" />
+            <IconButton
+              icon={Dice5}
+              label="Random country"
+              active={randomDestinationPending}
+              disabled={randomDestinationPending}
+              onClick={onRandomDestination}
+              className="h-9 w-9 border-0 bg-transparent"
+            />
           </div>
         </nav>
 

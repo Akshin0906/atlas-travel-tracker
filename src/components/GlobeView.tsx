@@ -14,12 +14,29 @@ import { IconButton } from './ui'
 interface GlobeViewProps {
   cityPins: CityPin[]
   matchedKeys: Set<string> | null
+  randomDestinationRequest?: { key: string; nonce: number } | null
+  onRandomDestinationSettled?: (key: string) => void
 }
 
 const MIN_GLOBE_ZOOM = 0.75
 const MAX_GLOBE_ZOOM = 2.8
+const RANDOM_SPIN_DURATION_MS = 2400
+const RANDOM_SPIN_TURNS = 3
 
-export function GlobeView({ cityPins, matchedKeys }: GlobeViewProps) {
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3)
+}
+
+function shortestLongitudeDelta(from: number, to: number): number {
+  return ((((to - from) % 360) + 540) % 360) - 180
+}
+
+export function GlobeView({
+  cityPins,
+  matchedKeys,
+  randomDestinationRequest,
+  onRandomDestinationSettled,
+}: GlobeViewProps) {
   const { data, error } = useGeoData()
   const { ref, width, height } = useContainerSize<HTMLDivElement>()
   const dragRef = useRef<{
@@ -30,9 +47,13 @@ export function GlobeView({ cityPins, matchedKeys }: GlobeViewProps) {
     moved: boolean
   } | null>(null)
   const frameRef = useRef<number | null>(null)
+  const spinFrameRef = useRef<number | null>(null)
+  const spinningRef = useRef(false)
   const nextRotationRef = useRef<[number, number] | null>(null)
   const [hovered, setHovered] = useState<string | null>(null)
-  const [rotation, setRotation] = useState<[number, number]>([-22, -12])
+  const [rotation, setRotationState] = useState<[number, number]>([-22, -12])
+  const rotationRef = useRef<[number, number]>(rotation)
+  const [spinning, setSpinning] = useState(false)
   const [zoom, setZoom] = useState(1)
   const entries = useTravelStore((state) => state.entries)
   const { focus, selectedKey, selectEntity, showFavorites, showUSStates, showVisited } = useUIStore()
@@ -58,17 +79,66 @@ export function GlobeView({ cityPins, matchedKeys }: GlobeViewProps) {
 
   useEffect(() => {
     if (!data || !focus) return
+    if (spinningRef.current) return
     const target = data.byKey.get(focus.key)
     if (!target) return
     const [lng, lat] = target.centroid
-    setRotation([-lng, -lat])
+    commitRotation([-lng, -lat])
   }, [data, focus])
 
   useEffect(() => {
     return () => {
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current)
+      if (spinFrameRef.current !== null) cancelAnimationFrame(spinFrameRef.current)
     }
   }, [])
+
+  useEffect(() => {
+    if (!data || !randomDestinationRequest) return
+    const target = data.byKey.get(randomDestinationRequest.key)
+    if (!target) {
+      onRandomDestinationSettled?.(randomDestinationRequest.key)
+      return
+    }
+
+    if (spinFrameRef.current !== null) cancelAnimationFrame(spinFrameRef.current)
+    dragRef.current = null
+    spinningRef.current = true
+    setSpinning(true)
+
+    const start = rotationRef.current
+    const [lng, lat] = target.centroid
+    const targetKey = target.entity.key
+    const end: [number, number] = [-lng, -lat]
+    const lngDelta = shortestLongitudeDelta(start[0], end[0]) + 360 * RANDOM_SPIN_TURNS
+    const latDelta = end[1] - start[1]
+    const startedAt = performance.now()
+
+    function tick(now: number) {
+      const progress = clamp((now - startedAt) / RANDOM_SPIN_DURATION_MS, 0, 1)
+      const eased = easeOutCubic(progress)
+      commitRotation([start[0] + lngDelta * eased, start[1] + latDelta * eased])
+
+      if (progress < 1) {
+        spinFrameRef.current = requestAnimationFrame(tick)
+        return
+      }
+
+      spinFrameRef.current = null
+      spinningRef.current = false
+      commitRotation(end)
+      setSpinning(false)
+      onRandomDestinationSettled?.(targetKey)
+    }
+
+    spinFrameRef.current = requestAnimationFrame(tick)
+
+    return () => {
+      if (spinFrameRef.current !== null) cancelAnimationFrame(spinFrameRef.current)
+      spinFrameRef.current = null
+      spinningRef.current = false
+    }
+  }, [data, onRandomDestinationSettled, randomDestinationRequest])
 
   function colorsFor(item: EntityFeature) {
     if (hovered === item.entity.key) return { fill: 'rgba(96, 165, 250, 0.48)', stroke: 'rgba(191, 219, 254, 0.95)' }
@@ -83,12 +153,17 @@ export function GlobeView({ cityPins, matchedKeys }: GlobeViewProps) {
     )
   }
 
+  function commitRotation(next: [number, number]) {
+    rotationRef.current = next
+    setRotationState(next)
+  }
+
   function queueRotation(next: [number, number]) {
     nextRotationRef.current = next
     if (frameRef.current !== null) return
     frameRef.current = requestAnimationFrame(() => {
       frameRef.current = null
-      if (nextRotationRef.current) setRotation(nextRotationRef.current)
+      if (nextRotationRef.current) commitRotation(nextRotationRef.current)
       nextRotationRef.current = null
     })
   }
@@ -104,6 +179,7 @@ export function GlobeView({ cityPins, matchedKeys }: GlobeViewProps) {
   }
 
   function startDrag(event: PointerEvent<SVGSVGElement>) {
+    if (spinningRef.current) return
     event.currentTarget.setPointerCapture(event.pointerId)
     dragRef.current = {
       x: event.clientX,
@@ -115,6 +191,7 @@ export function GlobeView({ cityPins, matchedKeys }: GlobeViewProps) {
   }
 
   function drag(event: PointerEvent<SVGSVGElement>) {
+    if (spinningRef.current) return
     const start = dragRef.current
     if (!start) return
     const x = event.clientX - start.x
@@ -130,6 +207,7 @@ export function GlobeView({ cityPins, matchedKeys }: GlobeViewProps) {
   }
 
   function endDrag(event: PointerEvent<SVGSVGElement>) {
+    if (spinningRef.current) return
     const clickedKey = dragRef.current?.moved === false ? dragRef.current.key : null
     releasePointer(event)
     dragRef.current = null
@@ -137,12 +215,14 @@ export function GlobeView({ cityPins, matchedKeys }: GlobeViewProps) {
   }
 
   function cancelDrag(event: PointerEvent<SVGSVGElement>) {
+    if (spinningRef.current) return
     releasePointer(event)
     dragRef.current = null
   }
 
   function wheelZoom(event: WheelEvent<SVGSVGElement>) {
     event.preventDefault()
+    if (spinningRef.current) return
     updateZoom((current) => current * (event.deltaY > 0 ? 0.9 : 1.1))
   }
 
@@ -153,7 +233,7 @@ export function GlobeView({ cityPins, matchedKeys }: GlobeViewProps) {
       ) : path && projection ? (
         <>
         <svg
-          className="absolute inset-0 cursor-grab active:cursor-grabbing"
+          className={spinning ? 'absolute inset-0 cursor-wait' : 'absolute inset-0 cursor-grab active:cursor-grabbing'}
           width={width}
           height={height}
           viewBox={`0 0 ${width} ${height}`}

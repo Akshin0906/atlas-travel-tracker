@@ -1,15 +1,17 @@
-import { Suspense, lazy, useEffect, useMemo } from 'react'
-import { CheckCircle2, CircleUserRound } from 'lucide-react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
+import { CheckCircle2, CircleUserRound, Settings } from 'lucide-react'
 import { countries } from './data/countries'
 import { tourismCountries } from './data/tourismCountries'
 import { usStates } from './data/usStates'
 import { filterCountries, isFilterActive } from './lib/filters'
+import { randomTourismCountry } from './lib/randomDestination'
 import { entityKey } from './lib/travel'
 import { useCityPins } from './hooks/useCityPins'
 import { PinScreen } from './components/PinScreen'
 import { ProfileScreen } from './components/ProfileScreen'
 import { TopBar } from './components/TopBar'
 import { SearchOverlay } from './components/SearchOverlay'
+import { IconButton } from './components/ui'
 import { useAuthStore } from './stores/authStore'
 import { useTravelStore } from './stores/travelStore'
 import { useUIStore } from './stores/uiStore'
@@ -17,6 +19,11 @@ import { useUIStore } from './stores/uiStore'
 const GlobeView = lazy(() => import('./components/GlobeView').then((module) => ({ default: module.GlobeView })))
 const MapView = lazy(() => import('./components/MapView').then((module) => ({ default: module.MapView })))
 const PanelRouter = lazy(() => import('./components/panels/PanelRouter').then((module) => ({ default: module.PanelRouter })))
+
+interface RandomDestinationRequest {
+  key: string
+  nonce: number
+}
 
 export function App() {
   const clearProfile = useAuthStore((state) => state.clearProfile)
@@ -27,8 +34,10 @@ export function App() {
   const reset = useTravelStore((state) => state.reset)
   const status = useTravelStore((state) => state.status)
   const error = useTravelStore((state) => state.error)
-  const { dismissToast, filters, openSearch, toast, viewMode } = useUIStore()
+  const { dismissToast, filters, openPanel, openSearch, selectEntity, setViewMode, toast, viewMode } = useUIStore()
   const cityPins = useCityPins(entries)
+  const [randomDestinationRequest, setRandomDestinationRequest] = useState<RandomDestinationRequest | null>(null)
+  const [randomDestinationPending, setRandomDestinationPending] = useState(false)
 
   useEffect(() => {
     if (unlocked && selectedProfile) void init(selectedProfile.id)
@@ -46,6 +55,12 @@ export function App() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [openSearch, unlocked])
+
+  useEffect(() => {
+    if (viewMode === 'globe' || !randomDestinationPending) return
+    setRandomDestinationPending(false)
+    setRandomDestinationRequest(null)
+  }, [randomDestinationPending, viewMode])
 
   const matchedKeys = useMemo(() => {
     if (!isFilterActive(filters)) return null
@@ -68,16 +83,39 @@ export function App() {
     return keys
   }, [entries, filters])
 
+  const chooseRandomDestination = useCallback(() => {
+    if (randomDestinationPending) return
+    const country = randomTourismCountry()
+    const key = entityKey('country', country.iso2)
+    setViewMode('globe')
+    setRandomDestinationPending(true)
+    setRandomDestinationRequest((current) => ({ key, nonce: (current?.nonce ?? 0) + 1 }))
+  }, [randomDestinationPending, setViewMode])
+
+  const settleRandomDestination = useCallback(
+    (key: string) => {
+      setRandomDestinationPending(false)
+      setRandomDestinationRequest(null)
+      selectEntity(key)
+    },
+    [selectEntity],
+  )
+
   if (!selectedProfile) return <ProfileScreen />
   if (!unlocked) return <PinScreen />
 
   return (
     <div className="relative h-screen overflow-hidden">
-      <TopBar />
+      <TopBar randomDestinationPending={randomDestinationPending} onRandomDestination={chooseRandomDestination} />
       <main className="absolute inset-0">
         <Suspense fallback={<div className="grid h-full place-items-center text-sm text-slate-400">Loading Atlas...</div>}>
           {viewMode === 'globe' ? (
-            <GlobeView cityPins={cityPins} matchedKeys={matchedKeys} />
+            <GlobeView
+              cityPins={cityPins}
+              matchedKeys={matchedKeys}
+              randomDestinationRequest={randomDestinationRequest}
+              onRandomDestinationSettled={settleRandomDestination}
+            />
           ) : (
             <MapView cityPins={cityPins} matchedKeys={matchedKeys} />
           )}
@@ -89,15 +127,20 @@ export function App() {
         <div>{status === 'error' ? error : status === 'ready' ? 'Autosaves to your configured storage.' : 'Loading storage...'}</div>
       </div>
 
-      <button
-        type="button"
-        aria-label="Switch user"
-        title="Switch user"
-        onClick={clearProfile}
-        className="fixed bottom-24 left-4 z-30 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/35 text-slate-300 backdrop-blur-xl transition hover:bg-white/[0.08] hover:text-white"
-      >
-        <CircleUserRound aria-hidden className="h-5 w-5" />
-      </button>
+      <div className="fixed bottom-24 left-4 z-30 flex flex-col gap-2">
+        <IconButton
+          icon={CircleUserRound}
+          label="Switch user"
+          onClick={clearProfile}
+          className="h-10 w-10 rounded-full border-white/10 bg-black/35 text-slate-300 backdrop-blur-xl hover:bg-white/[0.08] hover:text-white"
+        />
+        <IconButton
+          icon={Settings}
+          label="Settings"
+          onClick={() => openPanel('settings')}
+          className="h-10 w-10 rounded-full border-white/10 bg-black/35 text-slate-300 backdrop-blur-xl hover:bg-white/[0.08] hover:text-white"
+        />
+      </div>
 
       <SearchOverlay />
       <Suspense fallback={null}>

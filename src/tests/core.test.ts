@@ -4,6 +4,7 @@ import { countries } from '../data/countries'
 import { cityPinCandidates } from '../lib/cityPins'
 import { defaultFilters, filterCountries } from '../lib/filters'
 import { DEFAULT_PIN_HASH, hashPin, isValidPinFormat, verifyPin } from '../lib/pin'
+import { randomIndex, randomTourismCountry } from '../lib/randomDestination'
 import { searchEntities } from '../lib/search'
 import { computeStats } from '../lib/stats'
 import { entryToRow, rowToEntry } from '../lib/storage'
@@ -151,6 +152,20 @@ describe('tourism data', () => {
   })
 })
 
+describe('random destination picker', () => {
+  it('rejects the biased Uint32 tail before mapping to a tourism country', () => {
+    const source = fixedRandomValues(0xffffffff, 42)
+
+    expect(randomIndex(100, source)).toBe(42)
+  })
+
+  it('picks from the tourism data list', () => {
+    const source = fixedRandomValues(99)
+
+    expect(randomTourismCountry(tourismCountries, source)).toBe(tourismCountries[99])
+  })
+})
+
 function expectedCities(country: TourismCountry): number {
   if (country.tier === 'major') return 5
   if (country.tier === 'mid') return 3
@@ -185,5 +200,15 @@ function entry(
     notes: '',
     createdAt: '',
     updatedAt: '',
+  }
+}
+
+function fixedRandomValues(...values: number[]) {
+  let index = 0
+  return {
+    getRandomValues<T extends ArrayBufferView | null>(array: T): T {
+      if (array instanceof Uint32Array) array[0] = values[index++]
+      return array
+    },
   }
 }

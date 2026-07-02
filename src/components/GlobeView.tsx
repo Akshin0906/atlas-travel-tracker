@@ -183,9 +183,7 @@ export function GlobeView({ matchedKeys }: GlobeViewProps) {
                 className="transition-colors duration-150"
                 onPointerEnter={() => setHovered(item.entity.key)}
                 onPointerLeave={() => setHovered(null)}
-              >
-                <title>{item.entity.name}</title>
-              </path>
+              />
             )
           })}
           <circle cx={width / 2} cy={height / 2} r={projection.scale()} fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1.4" />

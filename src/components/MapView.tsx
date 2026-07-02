@@ -154,9 +154,7 @@ export function MapView({ matchedKeys }: MapViewProps) {
                   onClick={() => {
                     if (!suppressClickRef.current) selectEntity(item.entity.key, { focus: true })
                   }}
-                >
-                  <title>{item.entity.name}</title>
-                </path>
+                />
               )
             })}
           </g>

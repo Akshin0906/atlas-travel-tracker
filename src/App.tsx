@@ -25,12 +25,24 @@ export function App() {
   const reset = useTravelStore((state) => state.reset)
   const status = useTravelStore((state) => state.status)
   const error = useTravelStore((state) => state.error)
-  const { dismissToast, filters, toast, viewMode } = useUIStore()
+  const { dismissToast, filters, openSearch, toast, viewMode } = useUIStore()
 
   useEffect(() => {
     if (unlocked && selectedProfile) void init(selectedProfile.id)
     else reset()
   }, [init, reset, selectedProfile, unlocked])
+
+  useEffect(() => {
+    if (!unlocked) return
+    function onKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        openSearch('select')
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [openSearch, unlocked])
 
   const matchedKeys = useMemo(() => {
     if (!isFilterActive(filters)) return null

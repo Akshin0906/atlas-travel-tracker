@@ -13,8 +13,8 @@ export function StatsPanel() {
   return (
     <PanelShell title="Stats" subtitle="Your personal travel snapshot">
       <div className="grid grid-cols-2 gap-3">
-        <Stat icon={Globe2} label="Countries visited" value={`${stats.countriesVisited}/${stats.countriesTotal}`} detail={`${stats.countriesPct}%`} />
-        <Stat icon={MapPinned} label="US states visited" value={`${stats.statesVisited}/${stats.statesTotal}`} detail={`${stats.statesPct}%`} />
+        <Stat icon={Globe2} label="Countries visited" value={`${stats.countriesVisited}/${stats.countriesTotal}`} detail={`${stats.countriesPct}%`} percent={stats.countriesPct} />
+        <Stat icon={MapPinned} label="US states visited" value={`${stats.statesVisited}/${stats.statesTotal}`} detail={`${stats.statesPct}%`} percent={stats.statesPct} />
         <Stat icon={Heart} label="Favorites" value={`${stats.favoriteCountries + stats.favoriteStates}`} detail="countries + states" />
         <Stat icon={BarChart3} label="Continents" value={`${stats.continentsVisited.length}`} detail={stats.continentsVisited.join(', ') || 'None yet'} />
       </div>
@@ -33,13 +33,22 @@ export function StatsPanel() {
   )
 }
 
-function Stat({ detail, icon: Icon, label, value }: { detail: string; icon: typeof Globe2; label: string; value: string }) {
+function Stat({ detail, icon: Icon, label, percent, value }: { detail: string; icon: typeof Globe2; label: string; percent?: number; value: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-      <Icon aria-hidden className="mb-3 h-5 w-5 text-blue-200" />
+    <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.06]">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <Icon aria-hidden className="h-5 w-5 text-blue-200" />
+        <span className="text-xs font-medium text-slate-400">{detail}</span>
+      </div>
       <div className="text-2xl font-semibold text-white">{value}</div>
       <div className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="mt-2 min-h-5 text-xs text-slate-400">{detail}</div>
+      {percent !== undefined ? (
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
+          <div className="h-full rounded-full bg-accent shadow-[0_0_16px_rgba(10,132,255,0.45)]" style={{ width: `${Math.min(percent, 100)}%` }} />
+        </div>
+      ) : (
+        <div className="mt-3 min-h-1.5" />
+      )}
     </div>
   )
 }

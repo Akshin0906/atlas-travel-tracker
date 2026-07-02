@@ -1,5 +1,5 @@
 import { KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { MapPin, Search, X } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Heart, MapPin, Search, X } from 'lucide-react'
 import { searchEntities } from '../lib/search'
 import { useEscape } from '../hooks/useEscape'
 import { useTravelStore } from '../stores/travelStore'
@@ -61,10 +61,13 @@ export function SearchOverlay() {
       : searchMode === 'add-favorite'
         ? 'Add favorite country or state'
         : 'Search countries and states'
+  const actionLabel =
+    searchMode === 'add-visited' ? 'Mark visited' : searchMode === 'add-favorite' ? 'Add favorite' : 'Open'
+  const ActionIcon = searchMode === 'add-visited' ? CheckCircle2 : searchMode === 'add-favorite' ? Heart : ArrowRight
 
   return (
     <div className="fixed inset-0 z-40 bg-black/45 px-4 pt-24 animate-fade-in" onMouseDown={closeSearch}>
-      <div className="glass mx-auto w-full max-w-2xl rounded-2xl p-3" onMouseDown={(event) => event.stopPropagation()}>
+      <div className="glass mx-auto w-full max-w-2xl rounded-2xl p-3 shadow-[0_30px_90px_rgba(0,0,0,0.48)]" onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-center gap-3 border-b border-white/10 px-2 pb-3">
           <Search aria-hidden className="h-5 w-5 text-slate-400" />
           <input
@@ -79,6 +82,9 @@ export function SearchOverlay() {
             placeholder={title}
             className="h-11 flex-1 bg-transparent text-lg text-white placeholder:text-slate-500 focus:outline-none"
           />
+          <span className="hidden rounded-full border border-white/10 bg-white/[0.06] px-2 py-1 text-xs text-slate-300 sm:inline-flex">
+            {actionLabel}
+          </span>
           <IconButton icon={X} label="Close search" onClick={closeSearch} className="border-0 bg-white/[0.05]" />
         </div>
         <div className="max-h-[55vh] overflow-y-auto py-2 scrollbar-thin">
@@ -91,19 +97,24 @@ export function SearchOverlay() {
               <button
                 key={result.entity.key}
                 type="button"
+                aria-selected={active === index}
                 onMouseEnter={() => setActive(index)}
                 onClick={() => void choose(index)}
                 className={cn(
-                  'flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition',
-                  active === index ? 'bg-white/[0.10]' : 'hover:bg-white/[0.06]',
+                  'group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition',
+                  active === index ? 'bg-white/[0.10] ring-1 ring-white/10' : 'hover:bg-white/[0.06]',
                 )}
               >
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/[0.06] text-blue-100">
+                <span className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-blue-100">
                   <MapPin aria-hidden className="h-4 w-4" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-white">{result.entity.name}</span>
                   <span className="block text-xs text-slate-400">{result.sub}</span>
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/20 px-2 py-1 text-xs text-slate-300 transition group-hover:text-white">
+                  {actionLabel}
+                  <ActionIcon aria-hidden className="h-3.5 w-3.5" />
                 </span>
               </button>
             ))

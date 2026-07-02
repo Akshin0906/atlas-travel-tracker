@@ -38,34 +38,41 @@ export function TopBar() {
           </div>
         </div>
 
-        <nav className="flex min-w-0 flex-1 items-center justify-center gap-2 overflow-x-auto px-2">
-          <Button icon={Plus} onClick={() => openSearch('add-visited')} className="shrink-0">
-            Visited
-          </Button>
-          <Button icon={Heart} onClick={() => openSearch('add-favorite')} className="shrink-0">
-            Favorite
-          </Button>
-          <IconButton icon={Search} label="Search" onClick={() => openSearch('select')} />
-          <IconButton icon={SlidersHorizontal} label="Filters" onClick={() => openPanel('filters')} />
-          <IconButton icon={BarChart3} label="Stats" onClick={() => openPanel('stats')} />
-          <IconButton icon={Star} label="Favorites" onClick={() => openPanel('favorites')} />
-          <IconButton icon={Settings} label="Settings" onClick={() => openPanel('settings')} />
+        <nav aria-label="Atlas toolbar" className="flex min-w-0 flex-1 items-center justify-center gap-2 overflow-x-auto px-2">
+          <div className="flex shrink-0 items-center gap-1 rounded-xl border border-white/10 bg-black/20 p-1">
+            <Button icon={Plus} onClick={() => openSearch('add-visited')} className="h-9 shrink-0 border-0 bg-white/[0.05] px-3">
+              Add visited
+            </Button>
+            <Button icon={Heart} onClick={() => openSearch('add-favorite')} className="h-9 shrink-0 border-0 bg-white/[0.05] px-3">
+              Add favorite
+            </Button>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1 rounded-xl border border-white/10 bg-black/20 p-1">
+            <IconButton icon={Search} label="Search" onClick={() => openSearch('select')} className="h-9 w-9 border-0 bg-transparent" />
+            <IconButton icon={SlidersHorizontal} label="Filters" onClick={() => openPanel('filters')} className="h-9 w-9 border-0 bg-transparent" />
+            <IconButton icon={BarChart3} label="Stats" onClick={() => openPanel('stats')} className="h-9 w-9 border-0 bg-transparent" />
+            <IconButton icon={Star} label="Favorites" onClick={() => openPanel('favorites')} className="h-9 w-9 border-0 bg-transparent" />
+            <IconButton icon={Settings} label="Settings" onClick={() => openPanel('settings')} className="h-9 w-9 border-0 bg-transparent" />
+          </div>
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-1">
           <IconButton
             icon={Eye}
             label={showVisited ? 'Hide visited highlighting' : 'Show visited highlighting'}
             active={showVisited}
             onClick={() => setShowVisited(!showVisited)}
+            className="h-9 w-9 border-0 bg-transparent"
           />
           <IconButton
             icon={Heart}
             label={showFavorites ? 'Hide favorite highlighting' : 'Show favorite highlighting'}
             active={showFavorites}
             onClick={() => setShowFavorites(!showFavorites)}
+            className="h-9 w-9 border-0 bg-transparent"
           />
-          <div className="flex rounded-xl border border-white/10 bg-white/[0.06] p-1">
+          <div className="flex rounded-lg border border-white/10 bg-white/[0.04] p-0.5">
             <IconButton
               icon={Globe2}
               label="Globe view"

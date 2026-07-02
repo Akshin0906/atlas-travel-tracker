@@ -11,7 +11,7 @@ export function Button({ icon: Icon, active, className, children, ...props }: Bu
   return (
     <button
       className={cn(
-        'inline-flex h-10 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition',
+        'inline-flex h-10 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition disabled:pointer-events-none disabled:opacity-50',
         active
           ? 'border-accent/60 bg-accent/20 text-white shadow-[0_0_20px_rgba(10,132,255,0.22)]'
           : 'border-white/10 bg-white/[0.06] text-slate-200 hover:bg-white/[0.10]',
@@ -37,7 +37,7 @@ export function IconButton({ icon: Icon, label, active, className, ...props }: I
       aria-label={label}
       title={label}
       className={cn(
-        'inline-flex h-10 w-10 items-center justify-center rounded-lg border transition',
+        'inline-flex h-10 w-10 items-center justify-center rounded-lg border transition disabled:pointer-events-none disabled:opacity-50',
         active
           ? 'border-accent/60 bg-accent/20 text-white shadow-[0_0_20px_rgba(10,132,255,0.24)]'
           : 'border-white/10 bg-white/[0.06] text-slate-300 hover:bg-white/[0.10]',

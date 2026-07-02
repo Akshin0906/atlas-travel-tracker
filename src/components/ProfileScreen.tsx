@@ -50,7 +50,7 @@ export function ProfileScreen() {
           </div>
           <StatRow label="Countries" akshin={stats.akshin.countries} neha={stats.neha.countries} />
           <div className="my-3 border-t border-white/10" />
-          <StatRow label="States" akshin={stats.akshin.states} neha={stats.neha.states} />
+          <StatRow label="U.S. States" akshin={stats.akshin.states} neha={stats.neha.states} />
           {statsFailed ? <p className="mt-3 text-xs text-slate-500">Stats unavailable right now.</p> : null}
         </section>
         <div className="mt-6 grid gap-3">

@@ -6,6 +6,12 @@ import { Button } from './ui'
 export function ProfileScreen() {
   const chooseProfile = useAuthStore((state) => state.chooseProfile)
 
+  function profileTint(profileId: string): string {
+    return profileId === 'akshin'
+      ? '!border-blue-300/20 !bg-blue-400/[0.08] !text-blue-50 hover:!bg-blue-400/[0.12]'
+      : '!border-pink-300/20 !bg-pink-400/[0.08] !text-pink-50 hover:!bg-pink-400/[0.12]'
+  }
+
   return (
     <main className="grid min-h-screen place-items-center px-6">
       <section className="glass w-full max-w-sm rounded-2xl p-6 text-center animate-pop-in">
@@ -15,7 +21,7 @@ export function ProfileScreen() {
         <h1 className="text-2xl font-semibold tracking-normal text-white">welcome</h1>
         <div className="mt-6 grid gap-3">
           {USER_PROFILES.map((profile) => (
-            <Button key={profile.id} type="button" onClick={() => chooseProfile(profile.id)} className="w-full">
+            <Button key={profile.id} type="button" onClick={() => chooseProfile(profile.id)} className={`w-full ${profileTint(profile.id)}`}>
               {profile.name}
             </Button>
           ))}

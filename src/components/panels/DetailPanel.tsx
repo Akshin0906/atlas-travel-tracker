@@ -108,7 +108,7 @@ export function DetailPanel() {
   return (
     <PanelShell
       title={`${entity.type === 'country' ? flagEmoji(entity.countryCode) : ''} ${entity.name}`.trim()}
-      subtitle={entity.type === 'us_state' ? 'US state' : tourism ? `${tourism.region} · ${tourism.tier} tourism` : 'Country'}
+      subtitle={entity.type === 'us_state' ? 'US state' : tourism ? `${tourism.region} · Travel guide` : 'Country'}
     >
       <div className="space-y-4">
         {entity.type === 'country' ? (
@@ -301,8 +301,8 @@ export function DetailPanel() {
           </>
         ) : (
           <section className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-            <h3 className="text-sm font-semibold text-white">Tourism info</h3>
-            <p className="mt-2 text-sm text-slate-400">Personal tracking is ready; no static tourism seed exists for this entry yet.</p>
+            <h3 className="text-sm font-semibold text-white">Travel guide</h3>
+            <p className="mt-2 text-sm text-slate-400">Personal tracking is ready; no guide details are available for this entry yet.</p>
           </section>
         )}
       </div>

@@ -16,6 +16,7 @@ export default {
         favorite: '#ffd60a',
       },
       fontFamily: {
+        display: ['New York', 'Iowan Old Style', 'Georgia', 'serif'],
         sans: [
           '-apple-system',
           'BlinkMacSystemFont',

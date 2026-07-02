@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { tourismCountries } from '../data/tourismCountries'
 import { countries } from '../data/countries'
+import { cityPinCandidates } from '../lib/cityPins'
 import { defaultFilters, filterCountries } from '../lib/filters'
 import { DEFAULT_PIN_HASH, hashPin, isValidPinFormat, verifyPin } from '../lib/pin'
 import { searchEntities } from '../lib/search'
@@ -38,10 +39,54 @@ describe('travel entry helpers', () => {
   })
 })
 
+describe('city pins', () => {
+  it('builds geocoding candidates from city tags', () => {
+    const entries: Record<string, TravelEntry> = {
+      'country:JP': {
+        ...entry('country:JP', 'country', 'JP', undefined, 'Japan', true, false),
+        cities: ['Tokyo'],
+      },
+      'us_state:US-CA': {
+        ...entry('us_state:US-CA', 'us_state', 'US', 'CA', 'California', true, false),
+        cities: ['San Francisco'],
+      },
+    }
+
+    expect(cityPinCandidates(entries)).toEqual([
+      {
+        id: 'country:JP:tokyo',
+        entryKey: 'country:JP',
+        city: 'Tokyo',
+        label: 'Tokyo, Japan',
+        query: 'Tokyo, Japan',
+        countryCode: 'jp',
+      },
+      {
+        id: 'us_state:US-CA:san francisco',
+        entryKey: 'us_state:US-CA',
+        city: 'San Francisco',
+        label: 'San Francisco, California',
+        query: 'San Francisco, California, United States',
+        countryCode: 'us',
+      },
+    ])
+  })
+})
+
 describe('search', () => {
   it('finds countries and US states by name or code', () => {
     expect(searchEntities('japan')[0]?.entity.countryCode).toBe('JP')
     expect(searchEntities('CA').some((result) => result.entity.key === 'us_state:US-CA')).toBe(true)
+  })
+
+  it('finds seeded tourism cities in the main search', () => {
+    const tokyo = searchEntities('Tokyo')[0]
+    expect(tokyo).toMatchObject({
+      kind: 'city',
+      city: 'Tokyo',
+      entity: { key: 'country:JP' },
+      sub: 'City in Japan',
+    })
   })
 })
 

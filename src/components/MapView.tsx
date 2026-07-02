@@ -8,17 +8,19 @@ import { clamp } from '../lib/utils'
 import { entityColors, visualStateFor } from '../lib/visuals'
 import { useTravelStore } from '../stores/travelStore'
 import { useUIStore } from '../stores/uiStore'
+import type { CityPin } from '../lib/cityPins'
 import type { EntityFeature, EntityGeoFeature } from '../lib/geo'
 import { IconButton } from './ui'
 
 interface MapViewProps {
+  cityPins: CityPin[]
   matchedKeys: Set<string> | null
 }
 
 const MIN_ZOOM = 0.7
 const MAX_ZOOM = 8
 
-export function MapView({ matchedKeys }: MapViewProps) {
+export function MapView({ cityPins, matchedKeys }: MapViewProps) {
   const { data, error } = useGeoData()
   const { ref, width, height } = useContainerSize<HTMLDivElement>()
   const dragRef = useRef<{ x: number; y: number; pan: { x: number; y: number }; moved: boolean } | null>(null)
@@ -109,7 +111,7 @@ export function MapView({ matchedKeys }: MapViewProps) {
 
   return (
     <div ref={ref} className="absolute inset-0">
-      {!data || !path ? (
+      {!data || !path || !projection ? (
         <div className="grid h-full place-items-center text-sm text-slate-400">{error ?? 'Loading map...'}</div>
       ) : (
         <>
@@ -155,6 +157,30 @@ export function MapView({ matchedKeys }: MapViewProps) {
                     if (!suppressClickRef.current) selectEntity(item.entity.key, { focus: true })
                   }}
                 />
+              )
+            })}
+            {cityPins.map((pin) => {
+              const point = projection(pin.coordinates)
+              if (!point) return null
+              return (
+                <g key={pin.id} className="pointer-events-none" data-city-pin={pin.id}>
+                  <circle
+                    cx={point[0]}
+                    cy={point[1]}
+                    r={7 / zoom}
+                    fill="rgba(56, 189, 248, 0.16)"
+                    stroke="rgba(125, 211, 252, 0.28)"
+                    strokeWidth={1 / zoom}
+                  />
+                  <circle
+                    cx={point[0]}
+                    cy={point[1]}
+                    r={3.5 / zoom}
+                    fill="#38bdf8"
+                    stroke="rgba(240, 249, 255, 0.9)"
+                    strokeWidth={1.2 / zoom}
+                  />
+                </g>
               )
             })}
           </g>

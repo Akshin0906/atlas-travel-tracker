@@ -5,6 +5,7 @@ import { tourismCountries } from './data/tourismCountries'
 import { usStates } from './data/usStates'
 import { filterCountries, isFilterActive } from './lib/filters'
 import { entityKey } from './lib/travel'
+import { useCityPins } from './hooks/useCityPins'
 import { PinScreen } from './components/PinScreen'
 import { ProfileScreen } from './components/ProfileScreen'
 import { TopBar } from './components/TopBar'
@@ -27,6 +28,7 @@ export function App() {
   const status = useTravelStore((state) => state.status)
   const error = useTravelStore((state) => state.error)
   const { dismissToast, filters, openSearch, toast, viewMode } = useUIStore()
+  const cityPins = useCityPins(entries)
 
   useEffect(() => {
     if (unlocked && selectedProfile) void init(selectedProfile.id)
@@ -74,7 +76,11 @@ export function App() {
       <TopBar />
       <main className="absolute inset-0">
         <Suspense fallback={<div className="grid h-full place-items-center text-sm text-slate-400">Loading Atlas...</div>}>
-          {viewMode === 'globe' ? <GlobeView matchedKeys={matchedKeys} /> : <MapView matchedKeys={matchedKeys} />}
+          {viewMode === 'globe' ? (
+            <GlobeView cityPins={cityPins} matchedKeys={matchedKeys} />
+          ) : (
+            <MapView cityPins={cityPins} matchedKeys={matchedKeys} />
+          )}
         </Suspense>
       </main>
 

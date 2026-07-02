@@ -7,17 +7,19 @@ import { clamp } from '../lib/utils'
 import { entityColors, visualStateFor } from '../lib/visuals'
 import { useTravelStore } from '../stores/travelStore'
 import { useUIStore } from '../stores/uiStore'
+import type { CityPin } from '../lib/cityPins'
 import type { EntityFeature } from '../lib/geo'
 import { IconButton } from './ui'
 
 interface GlobeViewProps {
+  cityPins: CityPin[]
   matchedKeys: Set<string> | null
 }
 
 const MIN_GLOBE_ZOOM = 0.75
 const MAX_GLOBE_ZOOM = 2.8
 
-export function GlobeView({ matchedKeys }: GlobeViewProps) {
+export function GlobeView({ cityPins, matchedKeys }: GlobeViewProps) {
   const { data, error } = useGeoData()
   const { ref, width, height } = useContainerSize<HTMLDivElement>()
   const dragRef = useRef<{
@@ -50,6 +52,8 @@ export function GlobeView({ matchedKeys }: GlobeViewProps) {
   }, [height, rotation, width, zoom])
 
   const path = useMemo(() => (projection ? geoPath(projection) : null), [projection])
+  const pinHaloPath = useMemo(() => (projection ? geoPath(projection).pointRadius(8) : null), [projection])
+  const pinDotPath = useMemo(() => (projection ? geoPath(projection).pointRadius(4) : null), [projection])
   const graticule = useMemo(() => geoGraticule().step([20, 20])(), [])
 
   useEffect(() => {
@@ -184,6 +188,18 @@ export function GlobeView({ matchedKeys }: GlobeViewProps) {
                 onPointerEnter={() => setHovered(item.entity.key)}
                 onPointerLeave={() => setHovered(null)}
               />
+            )
+          })}
+          {cityPins.map((pin) => {
+            const point = { type: 'Point', coordinates: pin.coordinates } as const
+            const halo = pinHaloPath?.(point) ?? undefined
+            const dot = pinDotPath?.(point) ?? undefined
+            if (!halo || !dot) return null
+            return (
+              <g key={pin.id} className="pointer-events-none" data-city-pin={pin.id}>
+                <path d={halo} fill="rgba(56, 189, 248, 0.16)" stroke="rgba(125, 211, 252, 0.28)" strokeWidth="1" />
+                <path d={dot} fill="#38bdf8" stroke="rgba(240, 249, 255, 0.9)" strokeWidth="1.2" />
+              </g>
             )
           })}
           <circle cx={width / 2} cy={height / 2} r={projection.scale()} fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1.4" />

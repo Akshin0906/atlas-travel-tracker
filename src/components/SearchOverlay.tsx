@@ -1,5 +1,5 @@
 import { KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowRight, CheckCircle2, Heart, MapPin, Search, X } from 'lucide-react'
+import { ArrowRight, Building2, CheckCircle2, Heart, MapPin, Search, X } from 'lucide-react'
 import { searchEntities } from '../lib/search'
 import { useEscape } from '../hooks/useEscape'
 import { useTravelStore } from '../stores/travelStore'
@@ -9,6 +9,7 @@ import { cn } from '../lib/utils'
 
 export function SearchOverlay() {
   const { closeSearch, searchMode, searchOpen, selectEntity, showToast } = useUIStore()
+  const addCity = useTravelStore((state) => state.addCity)
   const update = useTravelStore((state) => state.update)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
@@ -31,7 +32,8 @@ export function SearchOverlay() {
     if (!result) return
     if (searchMode === 'add-visited') {
       await update(result.entity, { visited: true })
-      showToast(`${result.entity.name} marked visited`)
+      if (result.city) await addCity(result.entity, result.city)
+      showToast(result.city ? `${result.city} added to ${result.entity.name}` : `${result.entity.name} marked visited`)
     }
     if (searchMode === 'add-favorite') {
       await update(result.entity, { favorite: true })
@@ -57,10 +59,10 @@ export function SearchOverlay() {
 
   const title =
     searchMode === 'add-visited'
-      ? 'Add visited country or state'
+      ? 'Add visited country, state, or city'
       : searchMode === 'add-favorite'
-        ? 'Add favorite country or state'
-        : 'Search countries and states'
+        ? 'Add favorite country, state, or city'
+        : 'Search countries, states, and cities'
   const actionLabel =
     searchMode === 'add-visited' ? 'Mark visited' : searchMode === 'add-favorite' ? 'Add favorite' : 'Open'
   const ActionIcon = searchMode === 'add-visited' ? CheckCircle2 : searchMode === 'add-favorite' ? Heart : ArrowRight
@@ -95,7 +97,7 @@ export function SearchOverlay() {
           ) : (
             results.map((result, index) => (
               <button
-                key={result.entity.key}
+                key={result.id}
                 type="button"
                 aria-selected={active === index}
                 onMouseEnter={() => setActive(index)}
@@ -106,10 +108,10 @@ export function SearchOverlay() {
                 )}
               >
                 <span className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-blue-100">
-                  <MapPin aria-hidden className="h-4 w-4" />
+                  {result.kind === 'city' ? <Building2 aria-hidden className="h-4 w-4" /> : <MapPin aria-hidden className="h-4 w-4" />}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-white">{result.entity.name}</span>
+                  <span className="block truncate text-sm font-medium text-white">{result.city ?? result.entity.name}</span>
                   <span className="block text-xs text-slate-400">{result.sub}</span>
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/20 px-2 py-1 text-xs text-slate-300 transition group-hover:text-white">

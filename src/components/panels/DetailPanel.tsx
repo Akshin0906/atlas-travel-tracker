@@ -13,6 +13,7 @@ import {
 import { tourismByIso2 } from '../../data/tourismCountries'
 import { SEASON_LABELS } from '../../data/tags'
 import { entityFromKey } from '../../lib/entities'
+import { normalizeText } from '../../lib/search'
 import { cn, flagEmoji, formatDate } from '../../lib/utils'
 import { useTravelStore } from '../../stores/travelStore'
 import { useUIStore } from '../../stores/uiStore'
@@ -40,6 +41,7 @@ export function DetailPanel() {
   const entry = entity ? entries[entity.key] : undefined
   const tourism = entity?.type === 'country' ? tourismByIso2.get(entity.countryCode) : undefined
   const [city, setCity] = useState('')
+  const [citySuggestionsOpen, setCitySuggestionsOpen] = useState(false)
   const [notes, setLocalNotes] = useState(entry?.notes ?? '')
   const [activeTab, setActiveTab] = useState<DetailTab>('track')
   const [openCity, setOpenCity] = useState<string | null>(null)
@@ -64,6 +66,18 @@ export function DetailPanel() {
       : tourism.seasonalNotes[filters.season]
   }, [filters.season, tourism])
 
+  const citySuggestions = useMemo(() => {
+    const saved = new Set((entry?.cities ?? []).map(normalizeText))
+    const query = normalizeText(city)
+    return (tourism?.cities ?? [])
+      .filter((cityItem) => !saved.has(normalizeText(cityItem.name)))
+      .filter((cityItem) => {
+        if (!query) return true
+        return normalizeText(cityItem.name).includes(query)
+      })
+      .slice(0, 5)
+  }, [city, entry?.cities, tourism])
+
   if (!entity) {
     return (
       <PanelShell title="No selection">
@@ -74,9 +88,14 @@ export function DetailPanel() {
 
   function submitCity(event: FormEvent) {
     event.preventDefault()
-    if (!entity || !city.trim()) return
-    void addCity(entity, city)
+    void addCityName(city)
+  }
+
+  async function addCityName(name: string) {
+    if (!entity || !name.trim()) return
+    await addCity(entity, name)
     setCity('')
+    setCitySuggestionsOpen(false)
   }
 
   function changeVisit(visit: VisitRecord, patch: Partial<VisitRecord>) {
@@ -121,13 +140,36 @@ export function DetailPanel() {
                 <h3 className="text-sm font-semibold text-white">Cities visited</h3>
                 <span className="text-xs text-slate-500">{saveState === 'saving' ? 'Saving...' : saveState === 'saved' ? 'Saved' : ''}</span>
               </div>
-              <form onSubmit={submitCity} className="flex gap-2">
-                <input
-                  value={city}
-                  onChange={(event) => setCity(event.target.value)}
-                  placeholder="Add city"
-                  className="h-10 min-w-0 flex-1 rounded-lg border border-white/10 bg-black/25 px-3 text-sm text-white placeholder:text-slate-500"
-                />
+              <form onSubmit={submitCity} className="relative flex gap-2">
+                <div className="relative min-w-0 flex-1">
+                  <input
+                    value={city}
+                    onBlur={() => setCitySuggestionsOpen(false)}
+                    onChange={(event) => {
+                      setCity(event.target.value)
+                      setCitySuggestionsOpen(true)
+                    }}
+                    onFocus={() => setCitySuggestionsOpen(true)}
+                    placeholder="Add city"
+                    className="h-10 w-full rounded-lg border border-white/10 bg-black/25 px-3 text-sm text-white placeholder:text-slate-500"
+                  />
+                  {citySuggestionsOpen && citySuggestions.length > 0 ? (
+                    <div className="absolute left-0 right-0 top-11 z-40 overflow-hidden rounded-xl border border-white/10 bg-ink-900 shadow-2xl">
+                      {citySuggestions.map((cityItem) => (
+                        <button
+                          key={cityItem.name}
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => void addCityName(cityItem.name)}
+                          className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm text-slate-200 transition hover:bg-white/[0.08] hover:text-white"
+                        >
+                          <span className="truncate">{cityItem.name}</span>
+                          <span className="text-xs text-slate-500">{cityItem.pois.length === 1 ? '1 highlight' : `${cityItem.pois.length} highlights`}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
                 <IconButton icon={Plus} label="Add city" type="submit" />
               </form>
               <div className="mt-3 flex flex-wrap gap-2">

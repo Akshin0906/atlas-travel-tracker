@@ -7,14 +7,17 @@ import { cn } from '../lib/utils'
 
 export function PinScreen() {
   const unlock = useAuthStore((state) => state.unlock)
+  const clearProfile = useAuthStore((state) => state.clearProfile)
+  const selectedProfile = useAuthStore((state) => state.selectedProfile)
   const [pin, setPin] = useState('')
   const [error, setError] = useState(false)
   const [busy, setBusy] = useState(false)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
+    if (!selectedProfile) return
     setBusy(true)
-    const ok = await verifyPin(pin)
+    const ok = await verifyPin(pin, selectedProfile.pinHash)
     setBusy(false)
     if (ok) {
       unlock()
@@ -37,7 +40,7 @@ export function PinScreen() {
         <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl border border-white/10 bg-white/[0.06]">
           <LockKeyhole aria-hidden className="h-6 w-6 text-blue-200" />
         </div>
-        <h1 className="text-2xl font-semibold tracking-normal text-white">Atlas</h1>
+        <h1 className="text-2xl font-semibold tracking-normal text-white">{selectedProfile?.name ?? 'Atlas'}</h1>
         <p className="mt-2 text-sm text-slate-400">Enter your 4-digit PIN.</p>
         <input
           autoFocus
@@ -54,6 +57,13 @@ export function PinScreen() {
         <Button type="submit" disabled={pin.length !== PIN_LENGTH || busy} className="mt-6 w-full">
           {busy ? 'Checking...' : 'Unlock'}
         </Button>
+        <button
+          type="button"
+          onClick={clearProfile}
+          className="mt-4 text-sm font-medium text-slate-400 transition hover:text-white"
+        >
+          Switch user
+        </button>
       </form>
     </main>
   )

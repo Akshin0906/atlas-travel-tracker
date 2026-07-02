@@ -5,15 +5,16 @@ import { defaultFilters, filterCountries } from '../lib/filters'
 import { DEFAULT_PIN_HASH, hashPin, isValidPinFormat, verifyPin } from '../lib/pin'
 import { searchEntities } from '../lib/search'
 import { computeStats } from '../lib/stats'
+import { entryToRow, rowToEntry } from '../lib/storage'
 import { addCityTag, countryEntity, createEntry, mergeEntry } from '../lib/travel'
 import type { TourismCountry, TravelEntry } from '../types'
 
 describe('PIN helpers', () => {
-  it('validates format and hashes the default PIN', async () => {
-    expect(isValidPinFormat('0000')).toBe(true)
+  it('validates format and hashes Akshin default PIN', async () => {
+    expect(isValidPinFormat('0906')).toBe(true)
     expect(isValidPinFormat('12a4')).toBe(false)
-    expect(await hashPin('0000', 'atlas-pin-v1')).toBe(DEFAULT_PIN_HASH)
-    expect(await verifyPin('0000', DEFAULT_PIN_HASH, 'atlas-pin-v1')).toBe(true)
+    expect(await hashPin('0906', 'atlas-pin-v1')).toBe(DEFAULT_PIN_HASH)
+    expect(await verifyPin('0906', DEFAULT_PIN_HASH, 'atlas-pin-v1')).toBe(true)
     expect(await verifyPin('1234', DEFAULT_PIN_HASH, 'atlas-pin-v1')).toBe(false)
   })
 })
@@ -28,6 +29,12 @@ describe('travel entry helpers', () => {
     expect(patched.visited).toBe(true)
     expect(patched.cities).toEqual(['Paris'])
     expect(patched.updatedAt).toBe('2026-01-02T00:00:00.000Z')
+  })
+
+  it('scopes persisted rows by selected profile', () => {
+    const row = entryToRow(entry('country:FR', 'country', 'FR', undefined, 'France', true, false), 'neha')
+    expect(row.key).toBe('neha:country:FR')
+    expect(rowToEntry(row, 'neha').key).toBe('country:FR')
   })
 })
 

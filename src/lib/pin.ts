@@ -1,12 +1,13 @@
 // 4-digit PIN gate. This is a casual privacy screen, NOT real security:
 // the salted hash ships in the client bundle, so anyone determined can
 // brute-force 10,000 combinations. Never protect sensitive data with it.
+import type { UserProfileId } from '../types'
 
 const FALLBACK_SALT = 'atlas-pin-v1'
 
-/** Salted SHA-256 of "0000" with the fallback salt — the default PIN when VITE_PIN_HASH is unset. */
+/** Salted SHA-256 of "0906" with the fallback salt — Akshin's default PIN. */
 export const DEFAULT_PIN_HASH =
-  '3510fc85b15cdb6f5fb41b7ca112bd9cd50469c3c7a00491b2f0860e7c0835c1'
+  '316d66e2858a2717018609f7cb11efce04f9ebf76129b774143c58a0db57e96a'
 
 export const PIN_LENGTH = 4
 
@@ -37,20 +38,40 @@ export async function verifyPin(
   return (await hashPin(pin, salt)) === expectedHash
 }
 
-const UNLOCK_KEY = 'atlas.unlocked'
+const SELECTED_PROFILE_KEY = 'atlas.profile'
+const UNLOCK_KEY_PREFIX = 'atlas.unlocked.'
 
-export function isUnlocked(): boolean {
+export function getStoredProfileId(): UserProfileId | null {
   try {
-    return localStorage.getItem(UNLOCK_KEY) === '1'
+    const value = localStorage.getItem(SELECTED_PROFILE_KEY)
+    return value === 'akshin' || value === 'neha' ? value : null
+  } catch {
+    return null
+  }
+}
+
+export function setStoredProfileId(profileId: UserProfileId | null): void {
+  try {
+    if (profileId) localStorage.setItem(SELECTED_PROFILE_KEY, profileId)
+    else localStorage.removeItem(SELECTED_PROFILE_KEY)
+  } catch {
+    // storage unavailable (private mode) — the session just won't persist
+  }
+}
+
+export function isUnlocked(profileId: UserProfileId): boolean {
+  try {
+    return localStorage.getItem(`${UNLOCK_KEY_PREFIX}${profileId}`) === '1'
   } catch {
     return false
   }
 }
 
-export function setUnlocked(unlocked: boolean): void {
+export function setUnlocked(profileId: UserProfileId, unlocked: boolean): void {
   try {
-    if (unlocked) localStorage.setItem(UNLOCK_KEY, '1')
-    else localStorage.removeItem(UNLOCK_KEY)
+    const key = `${UNLOCK_KEY_PREFIX}${profileId}`
+    if (unlocked) localStorage.setItem(key, '1')
+    else localStorage.removeItem(key)
   } catch {
     // storage unavailable (private mode) — the session just won't persist
   }

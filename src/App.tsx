@@ -6,6 +6,7 @@ import { usStates } from './data/usStates'
 import { filterCountries, isFilterActive } from './lib/filters'
 import { entityKey } from './lib/travel'
 import { PinScreen } from './components/PinScreen'
+import { ProfileScreen } from './components/ProfileScreen'
 import { TopBar } from './components/TopBar'
 import { SearchOverlay } from './components/SearchOverlay'
 import { useAuthStore } from './stores/authStore'
@@ -18,15 +19,18 @@ const PanelRouter = lazy(() => import('./components/panels/PanelRouter').then((m
 
 export function App() {
   const unlocked = useAuthStore((state) => state.unlocked)
+  const selectedProfile = useAuthStore((state) => state.selectedProfile)
   const entries = useTravelStore((state) => state.entries)
   const init = useTravelStore((state) => state.init)
+  const reset = useTravelStore((state) => state.reset)
   const status = useTravelStore((state) => state.status)
   const error = useTravelStore((state) => state.error)
   const { dismissToast, filters, toast, viewMode } = useUIStore()
 
   useEffect(() => {
-    if (unlocked) void init()
-  }, [init, unlocked])
+    if (unlocked && selectedProfile) void init(selectedProfile.id)
+    else reset()
+  }, [init, reset, selectedProfile, unlocked])
 
   const matchedKeys = useMemo(() => {
     if (!isFilterActive(filters)) return null
@@ -49,6 +53,7 @@ export function App() {
     return keys
   }, [entries, filters])
 
+  if (!selectedProfile) return <ProfileScreen />
   if (!unlocked) return <PinScreen />
 
   return (

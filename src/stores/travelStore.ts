@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { TravelEntity, TravelEntry, VisitRecord } from '../types'
+import type { TravelEntity, TravelEntry, UserProfileId, VisitRecord } from '../types'
 import { createStorage, type TravelStorage } from '../lib/storage'
 import { addCityTag, isEmptyEntry, mergeEntry, removeCityTag, type EntryPatch } from '../lib/travel'
 import { uid } from '../lib/utils'
@@ -14,7 +14,8 @@ interface TravelState {
   saveState: SaveState
   error: string | null
 
-  init: () => Promise<void>
+  init: (profileId: UserProfileId) => Promise<void>
+  reset: () => void
   update: (entity: TravelEntity, patch: EntryPatch) => Promise<void>
   toggleVisited: (entity: TravelEntity) => Promise<void>
   toggleFavorite: (entity: TravelEntity) => Promise<void>
@@ -27,8 +28,14 @@ interface TravelState {
 }
 
 let storage: TravelStorage | null = null
-function getStorage(): TravelStorage {
-  if (!storage) storage = createStorage()
+let storageProfileId: UserProfileId | null = null
+
+function getStorage(profileId?: UserProfileId): TravelStorage {
+  if (profileId && storageProfileId !== profileId) {
+    storage = createStorage(profileId)
+    storageProfileId = profileId
+  }
+  if (!storage) throw new Error('Choose a profile before loading travel data.')
   return storage
 }
 
@@ -41,11 +48,15 @@ export const useTravelStore = create<TravelState>((set, get) => ({
   saveState: 'idle',
   error: null,
 
-  init: async () => {
+  init: async (profileId) => {
+    if (storageProfileId !== profileId) {
+      storage = null
+      set({ entries: {}, status: 'idle', saveState: 'idle', error: null })
+    }
     if (get().status === 'loading' || get().status === 'ready') return
     set({ status: 'loading' })
     try {
-      const store = getStorage()
+      const store = getStorage(profileId)
       const list = await store.list()
       set({
         entries: Object.fromEntries(list.map((e) => [e.key, e])),
@@ -56,6 +67,13 @@ export const useTravelStore = create<TravelState>((set, get) => ({
     } catch (err) {
       set({ status: 'error', error: err instanceof Error ? err.message : String(err) })
     }
+  },
+
+  reset: () => {
+    storage = null
+    storageProfileId = null
+    clearTimeout(savedResetTimer)
+    set({ entries: {}, status: 'idle', backend: 'local', saveState: 'idle', error: null })
   },
 
   update: async (entity, patch) => {

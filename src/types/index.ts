@@ -1,5 +1,7 @@
 // Core domain types for the Atlas travel tracker.
 
+export type UserProfileId = 'akshin' | 'neha'
+
 export type EntityType = 'country' | 'us_state'
 
 export type Region =

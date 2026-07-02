@@ -10,10 +10,11 @@ import type { TourismCountry, TravelEntry } from '../types'
 
 describe('PIN helpers', () => {
   it('validates format and hashes the default PIN', async () => {
-    expect(isValidPinFormat('1234')).toBe(true)
+    expect(isValidPinFormat('0000')).toBe(true)
     expect(isValidPinFormat('12a4')).toBe(false)
-    expect(await hashPin('1234', 'atlas-pin-v1')).toBe(DEFAULT_PIN_HASH)
-    expect(await verifyPin('1234', DEFAULT_PIN_HASH, 'atlas-pin-v1')).toBe(true)
+    expect(await hashPin('0000', 'atlas-pin-v1')).toBe(DEFAULT_PIN_HASH)
+    expect(await verifyPin('0000', DEFAULT_PIN_HASH, 'atlas-pin-v1')).toBe(true)
+    expect(await verifyPin('1234', DEFAULT_PIN_HASH, 'atlas-pin-v1')).toBe(false)
   })
 })
 

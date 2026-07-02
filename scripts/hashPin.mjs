@@ -1,5 +1,5 @@
 // Generates the salted SHA-256 hash for the 4-digit PIN gate.
-// Usage: npm run pin:hash -- 1234 [salt]
+// Usage: npm run pin:hash -- 0000 [salt]
 import { createHash } from 'node:crypto'
 
 const pin = process.argv[2]

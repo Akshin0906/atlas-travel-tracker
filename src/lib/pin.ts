@@ -4,9 +4,9 @@
 
 const FALLBACK_SALT = 'atlas-pin-v1'
 
-/** Salted SHA-256 of "1234" with the fallback salt — the default PIN when VITE_PIN_HASH is unset. */
+/** Salted SHA-256 of "0000" with the fallback salt — the default PIN when VITE_PIN_HASH is unset. */
 export const DEFAULT_PIN_HASH =
-  '359e93b95ed98e98da83f065f7d6bc8c2dbe2864dcb721486dee87223b18e92a'
+  '3510fc85b15cdb6f5fb41b7ca112bd9cd50469c3c7a00491b2f0860e7c0835c1'
 
 export const PIN_LENGTH = 4
 
@@ -20,10 +20,6 @@ export function getPinSalt(): string {
 
 export function getExpectedPinHash(): string {
   return import.meta.env.VITE_PIN_HASH || DEFAULT_PIN_HASH
-}
-
-export function isUsingDefaultPin(): boolean {
-  return !import.meta.env.VITE_PIN_HASH
 }
 
 export async function hashPin(pin: string, salt: string = getPinSalt()): Promise<string> {

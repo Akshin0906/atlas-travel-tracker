@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react'
-import { LockKeyhole, ShieldAlert } from 'lucide-react'
-import { PIN_LENGTH, isUsingDefaultPin, verifyPin } from '../lib/pin'
+import { LockKeyhole } from 'lucide-react'
+import { PIN_LENGTH, verifyPin } from '../lib/pin'
 import { useAuthStore } from '../stores/authStore'
 import { Button } from './ui'
 import { cn } from '../lib/utils'
@@ -51,12 +51,6 @@ export function PinScreen() {
           className="mt-6 h-14 w-full rounded-xl border border-white/10 bg-black/30 px-4 text-center text-3xl tracking-[0.6em] text-white"
         />
         {error ? <p className="mt-3 text-sm text-red-300">Wrong PIN.</p> : null}
-        {isUsingDefaultPin() ? (
-          <p className="mt-3 inline-flex items-center justify-center gap-2 text-xs text-amber-200/90">
-            <ShieldAlert aria-hidden className="h-3.5 w-3.5" />
-            Default PIN is 1234 until configured.
-          </p>
-        ) : null}
         <Button type="submit" disabled={pin.length !== PIN_LENGTH || busy} className="mt-6 w-full">
           {busy ? 'Checking...' : 'Unlock'}
         </Button>

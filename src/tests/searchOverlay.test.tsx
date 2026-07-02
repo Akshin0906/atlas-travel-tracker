@@ -7,6 +7,7 @@ import { useUIStore } from '../stores/uiStore'
 
 const initialUIState = useUIStore.getState()
 const initialTravelState = useTravelStore.getState()
+const cityResultWait = { timeout: 5000 }
 
 beforeEach(() => {
   useUIStore.setState(initialUIState, true)
@@ -21,7 +22,7 @@ describe('SearchOverlay', () => {
     render(<SearchOverlay />)
 
     await user.type(screen.getByRole('textbox', { name: /search countries/i }), 'Tokyo')
-    await user.click(await screen.findByRole('button', { name: /^Tokyo City in Japan Open$/i }))
+    await user.click(await screen.findByRole('button', { name: /^Tokyo City in Japan Open$/i }, cityResultWait))
 
     await waitFor(() => {
       expect(useUIStore.getState().selectedKey).toBe('country:JP')
@@ -39,7 +40,7 @@ describe('SearchOverlay', () => {
     render(<SearchOverlay />)
 
     await user.type(screen.getByRole('textbox', { name: /add visited/i }), 'Tokyo')
-    await user.click(await screen.findByRole('button', { name: /^Tokyo City in Japan Mark visited$/i }))
+    await user.click(await screen.findByRole('button', { name: /^Tokyo City in Japan Mark visited$/i }, cityResultWait))
 
     await waitFor(() => {
       expect(update).toHaveBeenCalledWith(expect.objectContaining({ key: 'country:JP' }), { visited: true })

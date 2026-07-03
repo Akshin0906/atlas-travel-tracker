@@ -36,8 +36,6 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_PIN_HASH: ${{ secrets.VITE_PIN_HASH }}
-          VITE_PIN_SALT: ${{ secrets.VITE_PIN_SALT }}
 
       - uses: actions/upload-pages-artifact@v5
         with:

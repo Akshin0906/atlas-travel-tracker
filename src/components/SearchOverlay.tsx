@@ -35,8 +35,9 @@ export function SearchOverlay() {
 
     async function loadCityResults() {
       const { searchCityEntities } = await import('../lib/citySearch')
+      const cityResults = await searchCityEntities(query)
       if (cancelled) return
-      setResults(sortSearchResults([...entityResults, ...searchCityEntities(query)]).slice(0, 12))
+      setResults(sortSearchResults([...entityResults, ...cityResults]).slice(0, 12))
     }
 
     void loadCityResults().catch(() => {

@@ -30,28 +30,33 @@ interface CitySearchIndex {
 }
 
 const tourismMapCache = new WeakMap<readonly TourismCountry[], Map<string, TourismCountry>>()
-const citySearchIndexCache = new WeakMap<readonly Country[], WeakMap<readonly TourismCountry[], CitySearchIndex>>()
+const citySearchIndexCache = new WeakMap<readonly Country[], WeakMap<readonly TourismCountry[], Promise<CitySearchIndex>>>()
 
-export function searchCityEntities(query: string, options: CitySearchOptions = {}): SearchResult[] {
+export async function searchCityEntities(query: string, options: CitySearchOptions = {}): Promise<SearchResult[]> {
   const { countries = allCountries, tourismCountries = allTourismCountries, limit = 12 } = options
   const q = normalizeText(query)
   if (q.length < 2) return []
 
-  return searchCityIndex(citySearchIndexFor(countries, tourismCountries), q, limit)
+  return searchCityIndex(await citySearchIndexFor(countries, tourismCountries), q, limit)
 }
 
-export function searchEntitiesWithCities(query: string, options: CitySearchOptions = {}): SearchResult[] {
+export async function searchEntitiesWithCities(query: string, options: CitySearchOptions = {}): Promise<SearchResult[]> {
   const limit = options.limit ?? 12
+  const cityResults = await searchCityEntities(query, {
+    countries: options.countries,
+    tourismCountries: options.tourismCountries,
+    limit,
+  })
   return sortSearchResults([
     ...searchEntities(query, { countries: options.countries, states: options.states, limit }),
-    ...searchCityEntities(query, { countries: options.countries, tourismCountries: options.tourismCountries, limit }),
+    ...cityResults,
   ]).slice(0, limit)
 }
 
 function citySearchIndexFor(
   countries: readonly Country[],
   tourismCountries: readonly TourismCountry[],
-): CitySearchIndex {
+): Promise<CitySearchIndex> {
   let indexByTourismCountries = citySearchIndexCache.get(countries)
   if (!indexByTourismCountries) {
     indexByTourismCountries = new WeakMap()
@@ -61,6 +66,15 @@ function citySearchIndexFor(
   const cached = indexByTourismCountries.get(tourismCountries)
   if (cached) return cached
 
+  const indexPromise = buildCitySearchIndex(countries, tourismCountries)
+  indexByTourismCountries.set(tourismCountries, indexPromise)
+  return indexPromise
+}
+
+async function buildCitySearchIndex(
+  countries: readonly Country[],
+  tourismCountries: readonly TourismCountry[],
+): Promise<CitySearchIndex> {
   const tourismByIso2 = tourismMapFor(tourismCountries)
   const index: CitySearchIndex = {
     items: [],
@@ -72,7 +86,7 @@ function citySearchIndexFor(
   for (const country of countries) {
     const tourismCountry = tourismByIso2.get(country.iso2)
     const entity = countryEntity(country)
-    for (const city of cityOptionsForCountryCode(country.iso2, tourismCountry?.cities ?? [])) {
+    for (const city of await cityOptionsForCountryCode(country.iso2, tourismCountry?.cities ?? [])) {
       const item: CitySearchItem = {
         id: `${entity.key}:city:${city.normalizedName}`,
         entity,
@@ -95,7 +109,6 @@ function citySearchIndexFor(
     }
   }
 
-  indexByTourismCountries.set(tourismCountries, index)
   return index
 }
 

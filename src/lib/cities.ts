@@ -1,4 +1,3 @@
-import { citiesByIso2 } from '../data/metroCities'
 import type { TourismCity, TourismCountry } from '../types'
 import { normalizeText } from './text'
 
@@ -10,17 +9,26 @@ export interface CountryCityOption {
 }
 
 const EMPTY_GUIDE_CITIES: readonly TourismCity[] = []
+const METRO_CITIES_PATH = 'data/metro-cities.json'
 const metroOptionsByIso2 = new Map<string, CountryCityOption[]>()
 const optionsByGuideCities = new WeakMap<readonly TourismCity[], Map<string, CountryCityOption[]>>()
+let metroCitiesCache: Promise<MetroCitiesByIso2> | null = null
 
-export function cityOptionsForCountry(country: TourismCountry): CountryCityOption[] {
+export type MetroCitiesByIso2 = Record<string, string[]>
+
+export function loadMetroCities(): Promise<MetroCitiesByIso2> {
+  if (!metroCitiesCache) metroCitiesCache = fetchMetroCities()
+  return metroCitiesCache
+}
+
+export async function cityOptionsForCountry(country: TourismCountry): Promise<CountryCityOption[]> {
   return cityOptionsForCountryCode(country.iso2, country.cities)
 }
 
-export function cityOptionsForCountryCode(
+export async function cityOptionsForCountryCode(
   iso2: string,
   guideCities: readonly TourismCity[] = EMPTY_GUIDE_CITIES,
-): CountryCityOption[] {
+): Promise<CountryCityOption[]> {
   if (guideCities.length === 0) return metroOptionsForCountry(iso2)
 
   let optionsByIso2 = optionsByGuideCities.get(guideCities)
@@ -34,7 +42,7 @@ export function cityOptionsForCountryCode(
 
   const options = new Map<string, CountryCityOption>()
 
-  for (const option of metroOptionsForCountry(iso2)) {
+  for (const option of await metroOptionsForCountry(iso2)) {
     options.set(option.normalizedName, option)
   }
 
@@ -53,16 +61,17 @@ export function cityOptionsForCountryCode(
   return mergedOptions
 }
 
-export function citiesForCountry(iso2: string): readonly string[] {
-  if (iso2 in citiesByIso2) return citiesByIso2[iso2]
-  return []
+export async function citiesForCountry(iso2: string): Promise<readonly string[]> {
+  const citiesByIso2 = await loadMetroCities()
+  return citiesByIso2[iso2] ?? []
 }
 
-function metroOptionsForCountry(iso2: string): CountryCityOption[] {
+async function metroOptionsForCountry(iso2: string): Promise<CountryCityOption[]> {
   const cached = metroOptionsByIso2.get(iso2)
   if (cached) return cached
 
-  const options = citiesForCountry(iso2).map((name) => ({
+  const citiesByIso2 = await loadMetroCities()
+  const options = (citiesByIso2[iso2] ?? []).map((name) => ({
     name,
     normalizedName: normalizeText(name),
     highlightCount: 0,
@@ -70,4 +79,15 @@ function metroOptionsForCountry(iso2: string): CountryCityOption[] {
   }))
   metroOptionsByIso2.set(iso2, options)
   return options
+}
+
+async function fetchMetroCities(): Promise<MetroCitiesByIso2> {
+  const response = await fetch(`${import.meta.env.BASE_URL}${METRO_CITIES_PATH}`)
+  if (!response.ok) throw new Error(`Failed to load ${METRO_CITIES_PATH}: ${response.status}`)
+
+  const data = await response.json()
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error(`Invalid ${METRO_CITIES_PATH}`)
+  }
+  return data as MetroCitiesByIso2
 }

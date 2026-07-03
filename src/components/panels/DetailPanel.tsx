@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { tourismByIso2 } from '../../data/tourismCountries'
 import { SEASON_LABELS } from '../../data/tags'
-import { cityOptionsForCountryCode } from '../../lib/cities'
+import { cityOptionsForCountryCode, type CountryCityOption } from '../../lib/cities'
 import { entityFromKey } from '../../lib/entities'
 import { normalizeText } from '../../lib/text'
 import { cn, flagEmoji, formatDate } from '../../lib/utils'
@@ -48,6 +48,7 @@ export function DetailPanel() {
   const [openCity, setOpenCity] = useState<string | null>(null)
   const [prosOpen, setProsOpen] = useState(true)
   const [consOpen, setConsOpen] = useState(false)
+  const [citySuggestionOptions, setCitySuggestionOptions] = useState<CountryCityOption[]>([])
 
   useEffect(() => {
     setLocalNotes(entry?.notes ?? '')
@@ -67,9 +68,22 @@ export function DetailPanel() {
       : tourism.seasonalNotes[filters.season]
   }, [filters.season, tourism])
 
-  const citySuggestionOptions = useMemo(() => {
-    if (entity?.type !== 'country') return []
-    return cityOptionsForCountryCode(entity.countryCode, tourism?.cities ?? [])
+  useEffect(() => {
+    let cancelled = false
+    setCitySuggestionOptions([])
+    if (entity?.type !== 'country') return
+
+    void cityOptionsForCountryCode(entity.countryCode, tourism?.cities ?? [])
+      .then((options) => {
+        if (!cancelled) setCitySuggestionOptions(options)
+      })
+      .catch(() => {
+        if (!cancelled) setCitySuggestionOptions([])
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [entity?.countryCode, entity?.type, tourism?.cities])
 
   const savedCityNames = useMemo(() => new Set((entry?.cities ?? []).map(normalizeText)), [entry?.cities])

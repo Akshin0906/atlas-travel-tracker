@@ -1,7 +1,8 @@
 import type { TravelEntry } from '../types'
 import { normalizeText } from './text'
 
-const CITY_PIN_CACHE_KEY = 'atlas.cityPins.v1'
+const CITY_PIN_CACHE_KEY = 'atlas.cityPins.v2'
+const CITY_PIN_MISS_RETRY_MS = 86_400_000
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
 
 export interface CityPin {
@@ -21,6 +22,14 @@ export interface CityPinCandidate {
   query: string
   countryCode: string
 }
+
+export interface CityPinMiss {
+  status: 'miss'
+  retryAfter: number
+}
+
+export type CityPinCacheEntry = CityPin | CityPinMiss
+export type CityPinCache = Record<string, CityPinCacheEntry>
 
 function cityPinId(entry: TravelEntry, city: string): string {
   return `${entry.key}:${normalizeText(city)}`
@@ -46,17 +55,30 @@ export function cityPinCandidates(entries: Record<string, TravelEntry>): CityPin
   return candidates
 }
 
-export function readCityPinCache(storage: Storage = window.localStorage): Record<string, CityPin> {
+export function isCachedCityPin(entry: CityPinCacheEntry | undefined): entry is CityPin {
+  return Boolean(entry && 'coordinates' in entry)
+}
+
+export function shouldResolveCityPin(entry: CityPinCacheEntry | undefined, now: number = Date.now()): boolean {
+  if (!entry || isCachedCityPin(entry)) return !entry
+  return entry.retryAfter <= now
+}
+
+export function createCityPinMiss(now: number = Date.now()): CityPinMiss {
+  return { status: 'miss', retryAfter: now + CITY_PIN_MISS_RETRY_MS }
+}
+
+export function readCityPinCache(storage: Storage = window.localStorage): CityPinCache {
   try {
     const raw = storage.getItem(CITY_PIN_CACHE_KEY)
     if (!raw) return {}
-    return JSON.parse(raw) as Record<string, CityPin>
+    return JSON.parse(raw) as CityPinCache
   } catch {
     return {}
   }
 }
 
-export function writeCityPinCache(pins: Record<string, CityPin>, storage: Storage = window.localStorage): void {
+export function writeCityPinCache(pins: CityPinCache, storage: Storage = window.localStorage): void {
   try {
     storage.setItem(CITY_PIN_CACHE_KEY, JSON.stringify(pins))
   } catch {

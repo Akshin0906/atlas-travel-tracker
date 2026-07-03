@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { COUNTRY_TOTAL, US_STATE_TOTAL } from '../data/counts'
-import { citiesByIso2 } from '../data/metroCities'
 import { tourismCountries } from '../data/tourismCountries'
 import { countries } from '../data/countries'
 import { usStates } from '../data/usStates'
-import { cityOptionsForCountry } from '../lib/cities'
+import { cityOptionsForCountry, loadMetroCities } from '../lib/cities'
 import { searchEntitiesWithCities } from '../lib/citySearch'
-import { cityPinCandidates } from '../lib/cityPins'
+import { cityPinCandidates, createCityPinMiss, shouldResolveCityPin } from '../lib/cityPins'
 import { defaultFilters, filterCountries } from '../lib/filters'
 import { repeatedWorldOffsets, wrapHorizontalPan } from '../lib/mapWrap'
 import { DEFAULT_PIN_HASH, hashPin, isValidPinFormat, verifyPin } from '../lib/pin'
@@ -87,6 +86,14 @@ describe('city pins', () => {
       },
     ])
   })
+
+  it('holds failed geocodes until their retry window expires', () => {
+    const miss = createCityPinMiss(0)
+
+    expect(shouldResolveCityPin(undefined, 0)).toBe(true)
+    expect(shouldResolveCityPin(miss, 86_399_999)).toBe(false)
+    expect(shouldResolveCityPin(miss, 86_400_000)).toBe(true)
+  })
 })
 
 describe('map wrapping', () => {
@@ -108,8 +115,8 @@ describe('search', () => {
     expect(searchEntities('CA').some((result) => result.entity.key === 'us_state:US-CA')).toBe(true)
   })
 
-  it('finds seeded tourism cities in the main search', () => {
-    const tokyo = searchEntitiesWithCities('Tokyo')[0]
+  it('finds seeded tourism cities in the main search', async () => {
+    const tokyo = (await searchEntitiesWithCities('Tokyo'))[0]
     expect(tokyo).toMatchObject({
       kind: 'city',
       city: 'Tokyo',
@@ -118,8 +125,8 @@ describe('search', () => {
     })
   })
 
-  it('finds generated metro cities without surfacing city districts', () => {
-    const ahmedabad = searchEntitiesWithCities('Ahmedabad')[0]
+  it('finds generated metro cities without surfacing city districts', async () => {
+    const ahmedabad = (await searchEntitiesWithCities('Ahmedabad'))[0]
     expect(ahmedabad).toMatchObject({
       kind: 'city',
       city: 'Ahmedabad',
@@ -127,7 +134,7 @@ describe('search', () => {
       sub: 'City in India',
     })
 
-    expect(searchEntitiesWithCities('Brooklyn').some((result) => result.kind === 'city' && result.entity.key === 'country:US' && result.city === 'Brooklyn')).toBe(false)
+    expect((await searchEntitiesWithCities('Brooklyn')).some((result) => result.kind === 'city' && result.entity.key === 'country:US' && result.city === 'Brooklyn')).toBe(false)
   })
 })
 
@@ -201,7 +208,8 @@ describe('tourism data', () => {
     }
   })
 
-  it('has deduplicated city autocomplete coverage for every country', () => {
+  it('has deduplicated city autocomplete coverage for every country', async () => {
+    const citiesByIso2 = await loadMetroCities()
     const expectedCodes = countries.map((country) => country.iso2).sort()
     expect(Object.keys(citiesByIso2).sort()).toEqual(expectedCodes)
 
@@ -223,9 +231,9 @@ describe('tourism data', () => {
     expect(citiesByIso2.AF).not.toContain('Wuleswali Bihsud')
   })
 
-  it('keeps curated tourism towns in country city suggestions', () => {
+  it('keeps curated tourism towns in country city suggestions', async () => {
     const slovenia = tourismCountries.find((country) => country.iso2 === 'SI')!
-    expect(cityOptionsForCountry(slovenia).map((city) => city.name)).toContain('Bled')
+    expect((await cityOptionsForCountry(slovenia)).map((city) => city.name)).toContain('Bled')
   })
 })
 

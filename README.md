@@ -13,7 +13,7 @@ Default PIN: `0906`.
 
 ## Environment
 
-Copy `.env.example` to `.env.local`:
+Supabase is optional. To use it, copy `.env.example` to `.env.local`:
 
 ```bash
 cp .env.example .env.local
@@ -24,13 +24,11 @@ Set:
 ```txt
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
-VITE_PIN_HASH=
-VITE_PIN_SALT=atlas-pin-v1
 ```
 
 If Supabase variables are empty, Atlas falls back to browser `localStorage`.
 
-Generate a PIN hash:
+PIN hashes are profile-specific and live in `src/lib/profiles.ts`. To generate a replacement hash:
 
 ```bash
 npm run pin:hash -- 0906
@@ -62,6 +60,7 @@ Visited and favorite overlays can be toggled from the top-right controls or Sett
 ## Tourism Seed Data
 
 Static tourism data lives in `src/data/tourism/` and is exported through `src/data/tourismCountries.ts`.
+Generated metro city autocomplete data lives at `public/data/metro-cities.json`; rebuild it with `npm run generate:cities`.
 
 Shape:
 
@@ -78,8 +77,6 @@ Each country includes climate tags, travel styles, best months, seasonal notes, 
 3. Add optional secrets:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
-   - `VITE_PIN_HASH`
-   - `VITE_PIN_SALT`
 4. The workflow in `.github/workflows/deploy.yml` runs tests, builds Vite, and deploys `dist`.
 
 ## Checks

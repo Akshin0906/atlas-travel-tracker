@@ -3,7 +3,7 @@
 // brute-force 10,000 combinations. Never protect sensitive data with it.
 import type { UserProfileId } from '../types'
 
-const FALLBACK_SALT = 'atlas-pin-v1'
+export const DEFAULT_PIN_SALT = 'atlas-pin-v1'
 
 /** Salted SHA-256 of "0906" with the fallback salt — Akshin's default PIN. */
 export const DEFAULT_PIN_HASH =
@@ -15,15 +15,7 @@ export function isValidPinFormat(pin: string): boolean {
   return /^\d{4}$/.test(pin)
 }
 
-export function getPinSalt(): string {
-  return import.meta.env.VITE_PIN_SALT || FALLBACK_SALT
-}
-
-export function getExpectedPinHash(): string {
-  return import.meta.env.VITE_PIN_HASH || DEFAULT_PIN_HASH
-}
-
-export async function hashPin(pin: string, salt: string = getPinSalt()): Promise<string> {
+export async function hashPin(pin: string, salt: string = DEFAULT_PIN_SALT): Promise<string> {
   const data = new TextEncoder().encode(`${salt}:${pin}`)
   const digest = await crypto.subtle.digest('SHA-256', data)
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
@@ -31,8 +23,8 @@ export async function hashPin(pin: string, salt: string = getPinSalt()): Promise
 
 export async function verifyPin(
   pin: string,
-  expectedHash: string = getExpectedPinHash(),
-  salt: string = getPinSalt(),
+  expectedHash: string,
+  salt: string = DEFAULT_PIN_SALT,
 ): Promise<boolean> {
   if (!isValidPinFormat(pin)) return false
   return (await hashPin(pin, salt)) === expectedHash

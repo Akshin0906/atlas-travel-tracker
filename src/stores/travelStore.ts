@@ -29,6 +29,7 @@ interface TravelState {
 
 let storage: TravelStorage | null = null
 let storageProfileId: UserProfileId | null = null
+const saveQueues = new Map<string, Promise<void>>()
 
 function getStorage(profileId?: UserProfileId): TravelStorage {
   if (profileId && storageProfileId !== profileId) {
@@ -40,6 +41,18 @@ function getStorage(profileId?: UserProfileId): TravelStorage {
 }
 
 let savedResetTimer: ReturnType<typeof setTimeout> | undefined
+
+function enqueueSave(key: string, task: () => Promise<void>): Promise<void> {
+  const previous = saveQueues.get(key) ?? Promise.resolve()
+  const next = previous.catch(() => undefined).then(task)
+  saveQueues.set(key, next)
+  next
+    .finally(() => {
+      if (saveQueues.get(key) === next) saveQueues.delete(key)
+    })
+    .catch(() => undefined)
+  return next
+}
 
 export const useTravelStore = create<TravelState>((set, get) => ({
   entries: {},
@@ -72,6 +85,7 @@ export const useTravelStore = create<TravelState>((set, get) => ({
   reset: () => {
     storage = null
     storageProfileId = null
+    saveQueues.clear()
     clearTimeout(savedResetTimer)
     set({ entries: {}, status: 'idle', backend: 'local', saveState: 'idle', error: null })
   },
@@ -90,8 +104,8 @@ export const useTravelStore = create<TravelState>((set, get) => ({
     })
 
     try {
-      if (shouldDelete) await getStorage().remove(entity.key)
-      else await getStorage().save(next)
+      const store = getStorage()
+      await enqueueSave(entity.key, () => (shouldDelete ? store.remove(entity.key) : store.save(next)))
       set({ saveState: 'saved' })
       clearTimeout(savedResetTimer)
       savedResetTimer = setTimeout(() => {

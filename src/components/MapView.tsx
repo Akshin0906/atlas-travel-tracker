@@ -11,7 +11,6 @@ import { entityColors, visualStateFor } from '../lib/visuals'
 import { useTravelStore } from '../stores/travelStore'
 import { useUIStore } from '../stores/uiStore'
 import type { CityPin } from '../lib/cityPins'
-import type { EntityFeature, EntityGeoFeature } from '../lib/geo'
 import { IconButton } from './ui'
 
 interface MapViewProps {
@@ -55,6 +54,24 @@ export function MapView({ cityPins, matchedKeys }: MapViewProps) {
   }, [height, width])
 
   const path = useMemo(() => (projection ? geoPath(projection) : null), [projection])
+  const backgroundPaths = useMemo(
+    () => (data && path ? data.backgroundFeatures.map((feature) => path(feature) ?? undefined) : []),
+    [data, path],
+  )
+  const featurePaths = useMemo(
+    () => (path ? features.map((item, index) => ({ item, index, d: path(item.feature) ?? undefined })) : []),
+    [features, path],
+  )
+  const cityPinPoints = useMemo(
+    () =>
+      projection
+        ? cityPins.flatMap((pin) => {
+            const point = projection(pin.coordinates)
+            return point ? [{ pin, point }] : []
+          })
+        : [],
+    [cityPins, projection],
+  )
   const selected = selectedKey && data ? data.byKey.get(selectedKey) : null
   const selectedPoint = selected && projection ? projection(selected.centroid) : null
   const zoom = clamp((selected ? clamp(selected.zoom, 1, 5.5) : 1) * userZoom, MIN_ZOOM, MAX_ZOOM)
@@ -67,18 +84,77 @@ export function MapView({ cityPins, matchedKeys }: MapViewProps) {
   const transform = selectedPoint
     ? `translate(${focusCenterX + panX} ${height / 2 + pan.y}) scale(${zoom}) translate(${-selectedPoint[0]} ${-selectedPoint[1]})`
     : `translate(${width / 2 + panX} ${height / 2 + pan.y}) scale(${zoom}) translate(${-width / 2} ${-height / 2})`
-
-  function colorsFor(item: EntityFeature) {
-    return entityColors(
-      visualStateFor(item.entity.key, entries[item.entity.key], {
-        matchedKeys,
-        selectedKey,
-        showFavorites,
-        showVisited,
-      }),
-      'map',
-    )
-  }
+  const worldCopies = useMemo(
+    () =>
+      worldOffsets.map((offset) => (
+        <g key={offset} transform={offset === 0 ? undefined : `translate(${offset} 0)`}>
+          {backgroundPaths.map((d, index) => (
+            <path
+              key={`background-${offset}-${index}`}
+              d={d}
+              fill="rgba(148,163,184,0.05)"
+              stroke="rgba(255,255,255,0.08)"
+              strokeWidth={0.5 / zoom}
+            />
+          ))}
+          {featurePaths.map(({ item, index, d }) => {
+            const colors = entityColors(
+              visualStateFor(item.entity.key, entries[item.entity.key], {
+                matchedKeys,
+                selectedKey,
+                showFavorites,
+                showVisited,
+              }),
+              'map',
+            )
+            return (
+              <path
+                key={`${item.entity.key}-${offset}-${index}`}
+                d={d}
+                fill={colors.fill}
+                stroke={colors.stroke}
+                strokeWidth={(item.entity.key === selectedKey ? 1.5 : 0.7) / zoom}
+                vectorEffect="non-scaling-stroke"
+                data-entity-key={item.entity.key}
+                className="cursor-pointer transition-colors duration-200 hover:fill-blue-400/40"
+              />
+            )
+          })}
+          {cityPinPoints.map(({ pin, point }) => (
+            <g key={`${pin.id}-${offset}`} className="pointer-events-none" data-city-pin={pin.id}>
+              <circle
+                cx={point[0]}
+                cy={point[1]}
+                r={7 / zoom}
+                fill="rgba(56, 189, 248, 0.16)"
+                stroke="rgba(125, 211, 252, 0.28)"
+                strokeWidth={1 / zoom}
+              />
+              <circle
+                cx={point[0]}
+                cy={point[1]}
+                r={3.5 / zoom}
+                fill="#38bdf8"
+                stroke="rgba(240, 249, 255, 0.9)"
+                strokeWidth={1.2 / zoom}
+              />
+            </g>
+          ))}
+        </g>
+      )),
+    [
+      backgroundPaths,
+      cityPinPoints,
+      entries,
+      featurePaths,
+      matchedKeys,
+      selectedKey,
+      showFavorites,
+      showVisited,
+      worldOffsets,
+      zoom,
+    ],
+  )
 
   function setZoom(next: number | ((current: number) => number)) {
     setUserZoom((current) => clamp(typeof next === 'function' ? next(current) : next, MIN_ZOOM, MAX_ZOOM))
@@ -200,60 +276,7 @@ export function MapView({ cityPins, matchedKeys }: MapViewProps) {
             </linearGradient>
           </defs>
           <rect width={width} height={height} fill="url(#ocean)" />
-          <g transform={transform}>
-            {worldOffsets.map((offset) => (
-              <g key={offset} transform={offset === 0 ? undefined : `translate(${offset} 0)`}>
-                {data.backgroundFeatures.map((feature: EntityGeoFeature, index) => (
-                  <path
-                    key={`background-${offset}-${index}`}
-                    d={path(feature) ?? undefined}
-                    fill="rgba(148,163,184,0.05)"
-                    stroke="rgba(255,255,255,0.08)"
-                    strokeWidth={0.5 / zoom}
-                  />
-                ))}
-                {features.map((item, index) => {
-                  const colors = colorsFor(item)
-                  return (
-                    <path
-                      key={`${item.entity.key}-${offset}-${index}`}
-                      d={path(item.feature) ?? undefined}
-                      fill={colors.fill}
-                      stroke={colors.stroke}
-                      strokeWidth={(item.entity.key === selectedKey ? 1.5 : 0.7) / zoom}
-                      vectorEffect="non-scaling-stroke"
-                      data-entity-key={item.entity.key}
-                      className="cursor-pointer transition-colors duration-200 hover:fill-blue-400/40"
-                    />
-                  )
-                })}
-                {cityPins.map((pin) => {
-                  const point = projection(pin.coordinates)
-                  if (!point) return null
-                  return (
-                    <g key={`${pin.id}-${offset}`} className="pointer-events-none" data-city-pin={pin.id}>
-                      <circle
-                        cx={point[0]}
-                        cy={point[1]}
-                        r={7 / zoom}
-                        fill="rgba(56, 189, 248, 0.16)"
-                        stroke="rgba(125, 211, 252, 0.28)"
-                        strokeWidth={1 / zoom}
-                      />
-                      <circle
-                        cx={point[0]}
-                        cy={point[1]}
-                        r={3.5 / zoom}
-                        fill="#38bdf8"
-                        stroke="rgba(240, 249, 255, 0.9)"
-                        strokeWidth={1.2 / zoom}
-                      />
-                    </g>
-                  )
-                })}
-              </g>
-            ))}
-          </g>
+          <g transform={transform}>{worldCopies}</g>
         </svg>
         <div className="glass absolute bottom-20 right-4 z-20 flex rounded-xl p-1 sm:bottom-6 sm:right-6">
           <IconButton icon={Plus} label="Zoom in" onClick={() => setZoom((current) => current * 1.25)} className="h-9 w-9 border-0 bg-transparent" />

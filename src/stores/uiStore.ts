@@ -37,6 +37,8 @@ interface UIState {
 }
 
 let toastId = 0
+let toastTimer: ReturnType<typeof setTimeout> | undefined
+const TOAST_DURATION_MS = 4000
 
 export const useUIStore = create<UIState>()(
   persist(
@@ -57,7 +59,13 @@ export const useUIStore = create<UIState>()(
 
       openPanel: (panel) => set({ panel: get().panel === panel ? null : panel, searchOpen: false }),
 
-      closePanel: () => set({ panel: null }),
+      closePanel: () =>
+        set((state) => ({
+          panel: null,
+          // Closing the detail panel also deselects, so the entity's own
+          // visited/favorite colors show instead of a stale selection blue.
+          selectedKey: state.panel === 'detail' ? null : state.selectedKey,
+        })),
 
       selectEntity: (key, options) =>
         set((state) => ({
@@ -85,7 +93,14 @@ export const useUIStore = create<UIState>()(
 
       resetFilters: () => set({ filters: defaultFilters }),
 
-      showToast: (message) => set({ toast: { id: ++toastId, message } }),
+      showToast: (message) => {
+        const id = ++toastId
+        clearTimeout(toastTimer)
+        set({ toast: { id, message } })
+        toastTimer = setTimeout(() => {
+          set((state) => (state.toast?.id === id ? { toast: null } : state))
+        }, TOAST_DURATION_MS)
+      },
 
       dismissToast: (id) => set((state) => (state.toast?.id === id ? { toast: null } : state)),
     }),

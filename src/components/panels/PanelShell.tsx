@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { X } from 'lucide-react'
+import { useEscape } from '../../hooks/useEscape'
 import { useUIStore } from '../../stores/uiStore'
 import { IconButton } from '../ui'
 
@@ -11,8 +12,11 @@ interface PanelShellProps {
 
 export function PanelShell({ title, subtitle, children }: PanelShellProps) {
   const closePanel = useUIStore((state) => state.closePanel)
+  const searchOpen = useUIStore((state) => state.searchOpen)
+  // The search overlay sits above panels and owns Escape while it is open.
+  useEscape(closePanel, !searchOpen)
   return (
-    <aside className="glass fixed bottom-4 right-4 top-20 z-30 flex w-[min(440px,calc(100vw-2rem))] flex-col rounded-2xl animate-slide-in-right">
+    <aside className="glass fixed bottom-20 right-4 top-20 z-30 flex w-[min(440px,calc(100vw-2rem))] flex-col rounded-2xl animate-slide-in-right sm:bottom-4">
       <header className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
         <div>
           <h2 className="text-lg font-semibold text-white">{title}</h2>

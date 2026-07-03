@@ -3,6 +3,7 @@ import { geoGraticule, geoOrthographic, geoPath } from 'd3-geo'
 import { Minus, Plus, RotateCcw } from 'lucide-react'
 import { useContainerSize } from '../hooks/useContainerSize'
 import { useGeoData } from '../hooks/useGeoData'
+import { visibleCenterX } from '../lib/layout'
 import { clamp } from '../lib/utils'
 import { entityColors, visualStateFor } from '../lib/visuals'
 import { useTravelStore } from '../stores/travelStore'
@@ -56,7 +57,9 @@ export function GlobeView({
   const [spinning, setSpinning] = useState(false)
   const [zoom, setZoom] = useState(1)
   const entries = useTravelStore((state) => state.entries)
-  const { focus, selectedKey, selectEntity, showFavorites, showUSStates, showVisited } = useUIStore()
+  const { clearSelection, focus, selectedKey, selectEntity, showFavorites, showUSStates, showVisited } = useUIStore()
+  const layoutRef = useRef({ width, height, zoom })
+  layoutRef.current = { width, height, zoom }
 
   const polygons = useMemo(() => {
     if (!data) return []
@@ -82,8 +85,7 @@ export function GlobeView({
     if (spinningRef.current) return
     const target = data.byKey.get(focus.key)
     if (!target) return
-    const [lng, lat] = target.centroid
-    commitRotation([-lng, -lat])
+    commitRotation(focusRotation(target.centroid))
   }, [data, focus])
 
   useEffect(() => {
@@ -107,9 +109,8 @@ export function GlobeView({
     setSpinning(true)
 
     const start = rotationRef.current
-    const [lng, lat] = target.centroid
     const targetKey = target.entity.key
-    const end: [number, number] = [-lng, -lat]
+    const end = focusRotation(target.centroid)
     const lngDelta = shortestLongitudeDelta(start[0], end[0]) + 360 * RANDOM_SPIN_TURNS
     const latDelta = end[1] - start[1]
     const startedAt = performance.now()
@@ -156,6 +157,24 @@ export function GlobeView({
   function commitRotation(next: [number, number]) {
     rotationRef.current = next
     setRotationState(next)
+  }
+
+  /**
+   * Rotation that puts a centroid at the centre of the viewport strip left
+   * visible by the detail panel (which opens with every fly-to), instead of
+   * the true screen centre where the panel would cover it.
+   */
+  function focusRotation([lng, lat]: [number, number]): [number, number] {
+    const layout = layoutRef.current
+    const scale = Math.min(layout.width, layout.height) * 0.36 * layout.zoom
+    const dx = layout.width / 2 - visibleCenterX(layout.width, true)
+    if (dx <= 0 || scale <= 0) return [-lng, -lat]
+    // Convert the pixel shift into extra longitude, capped so the target
+    // never lands foreshortened near the limb of the sphere.
+    const cosLat = Math.max(Math.cos((lat * Math.PI) / 180), 0.35)
+    const sinArg = Math.min(dx / (scale * cosLat), 0.9)
+    const offsetDeg = Math.min((Math.asin(sinArg) * 180) / Math.PI, 40)
+    return [-(lng + offsetDeg), -lat]
   }
 
   function queueRotation(next: [number, number]) {
@@ -208,10 +227,12 @@ export function GlobeView({
 
   function endDrag(event: PointerEvent<SVGSVGElement>) {
     if (spinningRef.current) return
-    const clickedKey = dragRef.current?.moved === false ? dragRef.current.key : null
+    const wasClick = dragRef.current?.moved === false
+    const clickedKey = wasClick ? dragRef.current?.key ?? null : null
     releasePointer(event)
     dragRef.current = null
     if (clickedKey) selectEntity(clickedKey, { focus: true })
+    else if (wasClick) clearSelection()
   }
 
   function cancelDrag(event: PointerEvent<SVGSVGElement>) {
@@ -284,7 +305,7 @@ export function GlobeView({
           })}
           <circle cx={width / 2} cy={height / 2} r={projection.scale()} fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1.4" />
         </svg>
-        <div className="glass absolute bottom-6 right-6 z-20 flex rounded-xl p-1">
+        <div className="glass absolute bottom-20 right-4 z-20 flex rounded-xl p-1 sm:bottom-6 sm:right-6">
           <IconButton icon={Plus} label="Zoom in" onClick={() => updateZoom((current) => current * 1.25)} className="h-9 w-9 border-0 bg-transparent" />
           <IconButton icon={Minus} label="Zoom out" onClick={() => updateZoom((current) => current / 1.25)} className="h-9 w-9 border-0 bg-transparent" />
           <IconButton icon={RotateCcw} label="Reset globe zoom" onClick={() => setZoom(1)} className="h-9 w-9 border-0 bg-transparent" />

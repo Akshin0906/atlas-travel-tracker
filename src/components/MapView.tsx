@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState, type PointerEvent, type WheelEvent } from 'react'
 import { geoMercator, geoPath } from 'd3-geo'
 import { Minus, Plus, RotateCcw } from 'lucide-react'
-import type { FeatureCollection, Geometry } from 'geojson'
 import { useContainerSize } from '../hooks/useContainerSize'
 import { useGeoData } from '../hooks/useGeoData'
+import { visibleCenterX } from '../lib/layout'
 import { repeatedWorldOffsets, wrapHorizontalPan } from '../lib/mapWrap'
 import { clamp } from '../lib/utils'
 import { entityColors, visualStateFor } from '../lib/visuals'
@@ -34,7 +34,7 @@ export function MapView({ cityPins, matchedKeys }: MapViewProps) {
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [userZoom, setUserZoom] = useState(1)
   const entries = useTravelStore((state) => state.entries)
-  const { clearSelection, selectedKey, selectEntity, showFavorites, showUSStates, showVisited } = useUIStore()
+  const { clearSelection, panel, selectedKey, selectEntity, showFavorites, showUSStates, showVisited } = useUIStore()
 
   const features = useMemo(() => {
     if (!data) return []
@@ -42,19 +42,14 @@ export function MapView({ cityPins, matchedKeys }: MapViewProps) {
   }, [data, showUSStates])
 
   const projection = useMemo(() => {
-    if (!data || width < 1 || height < 1) return null
-    const collection: FeatureCollection<Geometry> = {
-      type: 'FeatureCollection',
-      features: data.countryFeatures.map((item) => item.feature),
-    }
-    return geoMercator().fitExtent(
-      [
-        [Math.max(72, width * 0.08), Math.max(132, height * 0.16)],
-        [width - Math.max(72, width * 0.08), height - Math.max(80, height * 0.1)],
-      ],
-      collection,
-    )
-  }, [data, height, width])
+    if (width < 1 || height < 1) return null
+    // One world copy spans the viewport's larger dimension so the map fills
+    // the screen instead of floating in empty ocean; the horizontal wrap
+    // hides the seam, and the polar extremes crop off-screen. Centered north
+    // of the equator, where most of the landmass sits.
+    const scale = Math.max(width, height) / (2 * Math.PI)
+    return geoMercator().scale(scale).center([0, 26]).translate([width / 2, height / 2])
+  }, [height, width])
 
   const path = useMemo(() => (projection ? geoPath(projection) : null), [projection])
   const selected = selectedKey && data ? data.byKey.get(selectedKey) : null
@@ -64,8 +59,10 @@ export function MapView({ cityPins, matchedKeys }: MapViewProps) {
   const worldScreenWidth = worldWidth * zoom
   const panX = wrapHorizontalPan(pan.x, worldScreenWidth)
   const worldOffsets = useMemo(() => repeatedWorldOffsets(worldWidth, width, zoom), [width, worldWidth, zoom])
+  // Center the focused entity in the strip the detail panel leaves visible.
+  const focusCenterX = visibleCenterX(width, panel === 'detail')
   const transform = selectedPoint
-    ? `translate(${width / 2 + panX} ${height / 2 + pan.y}) scale(${zoom}) translate(${-selectedPoint[0]} ${-selectedPoint[1]})`
+    ? `translate(${focusCenterX + panX} ${height / 2 + pan.y}) scale(${zoom}) translate(${-selectedPoint[0]} ${-selectedPoint[1]})`
     : `translate(${width / 2 + panX} ${height / 2 + pan.y}) scale(${zoom}) translate(${-width / 2} ${-height / 2})`
 
   function colorsFor(item: EntityFeature) {
@@ -121,10 +118,12 @@ export function MapView({ cityPins, matchedKeys }: MapViewProps) {
   }
 
   function endPan(event: PointerEvent<SVGSVGElement>) {
-    const clickedKey = dragRef.current?.moved === false ? dragRef.current.key : null
+    const wasClick = dragRef.current?.moved === false
+    const clickedKey = wasClick ? dragRef.current?.key ?? null : null
     releasePointer(event)
     dragRef.current = null
     if (clickedKey) selectEntity(clickedKey, { focus: true })
+    else if (wasClick) clearSelection()
   }
 
   function cancelPan(event: PointerEvent<SVGSVGElement>) {
@@ -223,7 +222,7 @@ export function MapView({ cityPins, matchedKeys }: MapViewProps) {
             ))}
           </g>
         </svg>
-        <div className="glass absolute bottom-6 right-6 z-20 flex rounded-xl p-1">
+        <div className="glass absolute bottom-20 right-4 z-20 flex rounded-xl p-1 sm:bottom-6 sm:right-6">
           <IconButton icon={Plus} label="Zoom in" onClick={() => setZoom((current) => current * 1.25)} className="h-9 w-9 border-0 bg-transparent" />
           <IconButton icon={Minus} label="Zoom out" onClick={() => setZoom((current) => current / 1.25)} className="h-9 w-9 border-0 bg-transparent" />
           <IconButton icon={RotateCcw} label="Reset map view" onClick={resetMap} className="h-9 w-9 border-0 bg-transparent" />

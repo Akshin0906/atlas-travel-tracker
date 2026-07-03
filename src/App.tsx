@@ -69,26 +69,38 @@ export function App() {
     let cancelled = false
 
     async function loadFilteredKeys() {
-      const [{ tourismCountries }, { usStates }] = await Promise.all([
+      const [{ tourismCountries }, { usStates }, { countries }] = await Promise.all([
         import('./data/tourismCountries'),
         import('./data/usStates'),
+        import('./data/countries'),
       ])
       if (cancelled) return
 
       const keys = new Set(filterCountries(tourismCountries, entries, filters).map((tc) => entityKey('country', tc.iso2)))
-      const stateFriendly =
+      // Styles, weather, regions, and seasons only exist in the tourism
+      // dataset (100 countries). When just the personal flags are active,
+      // every country and US state can be matched from entries alone, so a
+      // visited country outside the guide data isn't dimmed as a non-match.
+      const entryFlagsOnly =
         filters.styles.length === 0 &&
         filters.weather.length === 0 &&
         filters.regions.length === 0 &&
         filters.season === 'overall'
-      if (stateFriendly) {
+      if (entryFlagsOnly) {
+        const matchesEntryFlags = (key: string): boolean => {
+          const entry = entries[key]
+          if (filters.visited === 'visited' && !entry?.visited) return false
+          if (filters.visited === 'unvisited' && entry?.visited) return false
+          if (filters.favoritesOnly && !entry?.favorite) return false
+          return true
+        }
+        for (const country of countries) {
+          const key = entityKey('country', country.iso2)
+          if (matchesEntryFlags(key)) keys.add(key)
+        }
         for (const state of usStates) {
           const key = entityKey('us_state', 'US', state.code)
-          const entry = entries[key]
-          if (filters.visited === 'visited' && !entry?.visited) continue
-          if (filters.visited === 'unvisited' && entry?.visited) continue
-          if (filters.favoritesOnly && !entry?.favorite) continue
-          keys.add(key)
+          if (matchesEntryFlags(key)) keys.add(key)
         }
       }
       setMatchedKeys(keys)
@@ -154,12 +166,12 @@ export function App() {
         </Suspense>
       </main>
 
-      <div className="pointer-events-none fixed bottom-4 left-4 z-20 max-w-sm rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-xs text-slate-300 backdrop-blur-xl">
+      <div className="pointer-events-none fixed bottom-20 left-4 z-20 max-w-[calc(100vw-12rem)] rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-xs text-slate-300 backdrop-blur-xl sm:bottom-4 sm:max-w-sm">
         <div className="font-medium text-white">{COUNTRY_TOTAL} countries, {US_STATE_TOTAL} states</div>
         <div>{status === 'error' ? error : status === 'ready' ? 'Autosaves to your configured storage.' : 'Loading storage...'}</div>
       </div>
 
-      <div className="fixed bottom-24 left-4 z-30 flex flex-col gap-2">
+      <div className="fixed bottom-40 left-4 z-30 flex flex-col gap-2 sm:bottom-24">
         <IconButton
           icon={CircleUserRound}
           label="Switch user"
@@ -183,7 +195,7 @@ export function App() {
 
       {toast ? (
         <button
-          className="glass fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-xl px-4 py-3 text-sm text-white animate-pop-in"
+          className="glass fixed bottom-20 right-4 z-50 flex items-center gap-2 rounded-xl px-4 py-3 text-sm text-white animate-pop-in sm:bottom-4"
           onClick={() => dismissToast(toast.id)}
         >
           <CheckCircle2 aria-hidden className="h-4 w-4 text-green-300" />

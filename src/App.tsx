@@ -1,5 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
-import { CheckCircle2, CircleUserRound, Settings } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, CircleUserRound, Settings } from 'lucide-react'
 import { COUNTRY_TOTAL, US_STATE_TOTAL } from './data/counts'
 import { filterCountries, isFilterActive } from './lib/filters'
 import { entityKey } from './lib/travel'
@@ -27,11 +27,13 @@ export function App() {
   const unlocked = useAuthStore((state) => state.unlocked)
   const selectedProfile = useAuthStore((state) => state.selectedProfile)
   const entries = useTravelStore((state) => state.entries)
+  const backend = useTravelStore((state) => state.backend)
   const init = useTravelStore((state) => state.init)
   const reset = useTravelStore((state) => state.reset)
   const status = useTravelStore((state) => state.status)
+  const saveState = useTravelStore((state) => state.saveState)
   const error = useTravelStore((state) => state.error)
-  const { dismissToast, filters, openPanel, openSearch, selectEntity, setViewMode, toast, viewMode } = useUIStore()
+  const { dismissToast, filters, openPanel, openSearch, selectEntity, setViewMode, showToast, toast, viewMode } = useUIStore()
   const cityPins = useCityPins(entries)
   const [matchedKeys, setMatchedKeys] = useState<Set<string> | null>(null)
   const [randomDestinationRequest, setRandomDestinationRequest] = useState<RandomDestinationRequest | null>(null)
@@ -53,6 +55,10 @@ export function App() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [openSearch, unlocked])
+
+  useEffect(() => {
+    if ((status === 'error' || saveState === 'error') && error) showToast(error, { tone: 'error' })
+  }, [error, saveState, showToast, status])
 
   useEffect(() => {
     if (viewMode === 'globe' || !randomDestinationPending) return
@@ -140,13 +146,21 @@ export function App() {
     (key: string) => {
       setRandomDestinationPending(false)
       setRandomDestinationRequest(null)
-      selectEntity(key)
+      selectEntity(key, { detailTab: 'guide' })
     },
     [selectEntity],
   )
 
   if (!selectedProfile) return <ProfileScreen />
   if (!unlocked) return <PinScreen />
+
+  const storageError = (status === 'error' || saveState === 'error') && error
+  const storageMessage = storageError
+    ? error
+    : status === 'ready'
+      ? backend === 'supabase' ? 'Synced to cloud' : 'Saved on this device'
+      : 'Loading storage...'
+  const ToastIcon = toast?.tone === 'error' ? AlertTriangle : CheckCircle2
 
   return (
     <div className="relative h-screen overflow-hidden">
@@ -167,8 +181,14 @@ export function App() {
       </main>
 
       <div className="pointer-events-none fixed bottom-20 left-4 z-20 max-w-[calc(100vw-12rem)] rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-xs text-slate-300 backdrop-blur-xl sm:bottom-4 sm:max-w-sm">
-        <div className="font-medium text-white">{COUNTRY_TOTAL} countries, {US_STATE_TOTAL} states</div>
-        <div>{status === 'error' ? error : status === 'ready' ? 'Autosaves to your configured storage.' : 'Loading storage...'}</div>
+        <div className="font-medium text-white">{COUNTRY_TOTAL} countries/territories, {US_STATE_TOTAL} states</div>
+        <div className={storageError ? 'text-red-200' : undefined}>{storageMessage}</div>
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-400">
+          <LegendDot className="bg-visited/80" label="Visited" />
+          <LegendDot className="bg-favorite/80" label="Favorite" />
+          <LegendDot className="bg-accent/80" label="Match" />
+          <LegendDot className="bg-slate-950/70 ring-1 ring-white/15" label="Dimmed" />
+        </div>
       </div>
 
       <div className="fixed bottom-40 left-4 z-30 flex flex-col gap-2 sm:bottom-24">
@@ -194,14 +214,35 @@ export function App() {
       </Suspense>
 
       {toast ? (
-        <button
-          className="glass fixed bottom-20 right-4 z-50 flex items-center gap-2 rounded-xl px-4 py-3 text-sm text-white animate-pop-in sm:bottom-4"
-          onClick={() => dismissToast(toast.id)}
+        <div
+          role={toast.tone === 'error' ? 'alert' : 'status'}
+          className={`glass fixed bottom-20 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-xl px-4 py-3 text-sm text-white animate-pop-in sm:bottom-4 ${toast.tone === 'error' ? 'border-red-300/25' : ''}`}
         >
-          <CheckCircle2 aria-hidden className="h-4 w-4 text-green-300" />
-          {toast.message}
-        </button>
+          <ToastIcon aria-hidden className={`h-4 w-4 shrink-0 ${toast.tone === 'error' ? 'text-red-300' : 'text-green-300'}`} />
+          <span className="min-w-0">{toast.message}</span>
+          {toast.action ? (
+            <button
+              type="button"
+              className="ml-2 rounded-lg border border-white/10 bg-white/[0.08] px-2 py-1 text-xs font-medium text-white hover:bg-white/[0.14]"
+              onClick={() => {
+                toast.action?.onClick()
+                dismissToast(toast.id)
+              }}
+            >
+              {toast.action.label}
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
+  )
+}
+
+function LegendDot({ className, label }: { className: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span aria-hidden className={`h-2 w-2 rounded-full ${className}`} />
+      {label}
+    </span>
   )
 }

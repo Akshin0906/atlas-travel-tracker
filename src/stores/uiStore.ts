@@ -5,11 +5,25 @@ import { defaultFilters } from '../lib/filters'
 
 export type PanelId = 'detail' | 'filters' | 'stats' | 'favorites' | 'settings'
 export type SearchMode = 'select' | 'add-visited' | 'add-favorite'
+export type DetailTab = 'track' | 'guide'
+
+interface ToastAction {
+  label: string
+  onClick: () => void
+}
+
+interface Toast {
+  id: number
+  message: string
+  tone?: 'success' | 'error'
+  action?: ToastAction
+}
 
 interface UIState {
   viewMode: ViewMode
   panel: PanelId | null
   selectedKey: string | null
+  detailTab: DetailTab
   /** Bumping nonce asks the active view to fly to the entity. */
   focus: { key: string; nonce: number } | null
   searchOpen: boolean
@@ -18,12 +32,13 @@ interface UIState {
   showFavorites: boolean
   showUSStates: boolean
   filters: FilterState
-  toast: { id: number; message: string } | null
+  toast: Toast | null
 
   setViewMode: (mode: ViewMode) => void
   openPanel: (panel: PanelId) => void
   closePanel: () => void
-  selectEntity: (key: string, options?: { focus?: boolean }) => void
+  setDetailTab: (tab: DetailTab) => void
+  selectEntity: (key: string, options?: { focus?: boolean; detailTab?: DetailTab }) => void
   clearSelection: () => void
   openSearch: (mode?: SearchMode) => void
   closeSearch: () => void
@@ -32,7 +47,7 @@ interface UIState {
   setShowUSStates: (v: boolean) => void
   setFilters: (patch: Partial<FilterState>) => void
   resetFilters: () => void
-  showToast: (message: string) => void
+  showToast: (message: string, options?: Omit<Toast, 'id' | 'message'>) => void
   dismissToast: (id: number) => void
 }
 
@@ -46,6 +61,7 @@ export const useUIStore = create<UIState>()(
       viewMode: 'globe',
       panel: null,
       selectedKey: null,
+      detailTab: 'track',
       focus: null,
       searchOpen: false,
       searchMode: 'select',
@@ -67,10 +83,13 @@ export const useUIStore = create<UIState>()(
           selectedKey: state.panel === 'detail' ? null : state.selectedKey,
         })),
 
+      setDetailTab: (detailTab) => set({ detailTab }),
+
       selectEntity: (key, options) =>
         set((state) => ({
           selectedKey: key,
           panel: 'detail',
+          detailTab: options?.detailTab ?? state.detailTab,
           searchOpen: false,
           focus: options?.focus ? { key, nonce: (state.focus?.nonce ?? 0) + 1 } : state.focus,
         })),
@@ -93,10 +112,10 @@ export const useUIStore = create<UIState>()(
 
       resetFilters: () => set({ filters: defaultFilters }),
 
-      showToast: (message) => {
+      showToast: (message, options) => {
         const id = ++toastId
         clearTimeout(toastTimer)
-        set({ toast: { id, message } })
+        set({ toast: { id, message, ...options } })
         toastTimer = setTimeout(() => {
           set((state) => (state.toast?.id === id ? { toast: null } : state))
         }, TOAST_DURATION_MS)
@@ -108,6 +127,7 @@ export const useUIStore = create<UIState>()(
       name: 'atlas.ui.v1',
       partialize: (state) => ({
         viewMode: state.viewMode,
+        detailTab: state.detailTab,
         showVisited: state.showVisited,
         showFavorites: state.showFavorites,
         showUSStates: state.showUSStates,

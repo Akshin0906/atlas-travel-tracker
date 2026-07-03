@@ -9,8 +9,9 @@ import { cityPinCandidates, createCityPinMiss, shouldResolveCityPin } from '../l
 import { defaultFilters, filterCountries } from '../lib/filters'
 import { repeatedWorldOffsets, wrapHorizontalPan } from '../lib/mapWrap'
 import { DEFAULT_PIN_HASH, hashPin, isValidPinFormat, verifyPin } from '../lib/pin'
+import { pinchZoom, twoPointerDistance } from '../lib/pointers'
 import { randomIndex, randomTourismCountry } from '../lib/randomDestination'
-import { searchEntities } from '../lib/search'
+import { scoreNormalizedName, searchEntities } from '../lib/search'
 import { computeStats } from '../lib/stats'
 import { profileStatsFromEntries } from '../lib/profileStats'
 import { entryToRow, rowToEntry } from '../lib/storage'
@@ -109,6 +110,16 @@ describe('map wrapping', () => {
   })
 })
 
+describe('pointer gestures', () => {
+  it('computes two-pointer pinch zoom from distance change', () => {
+    const startDistance = twoPointerDistance([{ x: 0, y: 0 }, { x: 0, y: 50 }])
+    const currentDistance = twoPointerDistance([{ x: 0, y: 0 }, { x: 0, y: 100 }])
+
+    expect(pinchZoom(1.5, startDistance, currentDistance)).toBe(3)
+    expect(pinchZoom(1.5, 0, currentDistance)).toBe(1.5)
+  })
+})
+
 describe('search', () => {
   it('finds countries and US states by name or code', () => {
     expect(searchEntities('japan')[0]?.entity.countryCode).toBe('JP')
@@ -135,6 +146,14 @@ describe('search', () => {
     })
 
     expect((await searchEntitiesWithCities('Brooklyn')).some((result) => result.kind === 'city' && result.entity.key === 'country:US' && result.city === 'Brooklyn')).toBe(false)
+  })
+
+  it('ranks city prefix matches above substring matches', () => {
+    const query = normalizeText('pa')
+
+    expect(scoreNormalizedName(query, normalizeText('Paris'))).toBeGreaterThan(
+      scoreNormalizedName(query, normalizeText('Chalons-en-Champagne')),
+    )
   })
 })
 

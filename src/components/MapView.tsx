@@ -5,6 +5,7 @@ import { useContainerSize } from '../hooks/useContainerSize'
 import { useGeoData } from '../hooks/useGeoData'
 import { visibleCenterX } from '../lib/layout'
 import { repeatedWorldOffsets, wrapHorizontalPan } from '../lib/mapWrap'
+import { pinchZoom, twoPointerDistance } from '../lib/pointers'
 import { clamp } from '../lib/utils'
 import { entityColors, visualStateFor } from '../lib/visuals'
 import { useTravelStore } from '../stores/travelStore'
@@ -31,6 +32,8 @@ export function MapView({ cityPins, matchedKeys }: MapViewProps) {
     key: string | null
     moved: boolean
   } | null>(null)
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>())
+  const pinchRef = useRef<{ distance: number; zoom: number } | null>(null)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [userZoom, setUserZoom] = useState(1)
   const entries = useTravelStore((state) => state.entries)
@@ -93,8 +96,22 @@ export function MapView({ cityPins, matchedKeys }: MapViewProps) {
       : null
   }
 
+  function rememberPointer(event: PointerEvent<SVGSVGElement>) {
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+  }
+
+  function pinchDistance() {
+    return twoPointerDistance(pointersRef.current.values())
+  }
+
   function startPan(event: PointerEvent<SVGSVGElement>) {
     event.currentTarget.setPointerCapture(event.pointerId)
+    rememberPointer(event)
+    if (pointersRef.current.size >= 2) {
+      pinchRef.current = { distance: pinchDistance(), zoom: userZoom }
+      dragRef.current = null
+      return
+    }
     dragRef.current = {
       x: event.clientX,
       y: event.clientY,
@@ -105,6 +122,13 @@ export function MapView({ cityPins, matchedKeys }: MapViewProps) {
   }
 
   function dragMap(event: PointerEvent<SVGSVGElement>) {
+    if (!pointersRef.current.has(event.pointerId)) return
+    rememberPointer(event)
+    if (pinchRef.current && pointersRef.current.size >= 2) {
+      const distance = pinchDistance()
+      setZoom(pinchZoom(pinchRef.current.zoom, pinchRef.current.distance, distance))
+      return
+    }
     const start = dragRef.current
     if (!start) return
     const x = event.clientX - start.x
@@ -118,9 +142,16 @@ export function MapView({ cityPins, matchedKeys }: MapViewProps) {
   }
 
   function endPan(event: PointerEvent<SVGSVGElement>) {
+    const wasPinching = pinchRef.current !== null || pointersRef.current.size > 1
+    releasePointer(event)
+    pointersRef.current.delete(event.pointerId)
+    if (wasPinching) {
+      if (pointersRef.current.size < 2) pinchRef.current = null
+      dragRef.current = null
+      return
+    }
     const wasClick = dragRef.current?.moved === false
     const clickedKey = wasClick ? dragRef.current?.key ?? null : null
-    releasePointer(event)
     dragRef.current = null
     if (clickedKey) selectEntity(clickedKey, { focus: true })
     else if (wasClick) clearSelection()
@@ -128,6 +159,8 @@ export function MapView({ cityPins, matchedKeys }: MapViewProps) {
 
   function cancelPan(event: PointerEvent<SVGSVGElement>) {
     releasePointer(event)
+    pointersRef.current.delete(event.pointerId)
+    if (pointersRef.current.size < 2) pinchRef.current = null
     dragRef.current = null
   }
 
@@ -151,7 +184,7 @@ export function MapView({ cityPins, matchedKeys }: MapViewProps) {
       ) : (
         <>
         <svg
-          className="h-full w-full cursor-grab active:cursor-grabbing"
+          className="h-full w-full touch-none cursor-grab active:cursor-grabbing"
           role="img"
           aria-label="Interactive travel map"
           onPointerDown={startPan}

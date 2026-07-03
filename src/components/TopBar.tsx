@@ -68,7 +68,18 @@ export function TopBar({ randomDestinationPending, onRandomDestination }: TopBar
             </div>
 
             <div className="flex shrink-0 items-center gap-1 rounded-xl border border-white/10 bg-black/20 p-1">
-              <IconButton icon={Search} label="Search" onClick={() => openSearch('select')} className="h-9 w-9 border-0 bg-transparent" />
+              <Button
+                icon={Search}
+                aria-label="Search"
+                title="Search"
+                onClick={() => openSearch('select')}
+                className="h-9 shrink-0 border-0 bg-transparent px-2"
+              >
+                <span className="hidden lg:inline">Search</span>
+                <kbd className="hidden rounded border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-slate-300 lg:inline-flex">
+                  ⌘K
+                </kbd>
+              </Button>
               <IconButton icon={SlidersHorizontal} label="Filters" onClick={() => openPanel('filters')} className="h-9 w-9 border-0 bg-transparent" />
               <IconButton icon={BarChart3} label="Stats" onClick={() => openPanel('stats')} className="h-9 w-9 border-0 bg-transparent" />
               <IconButton icon={Star} label="Favorites" onClick={() => openPanel('favorites')} className="h-9 w-9 border-0 bg-transparent" />

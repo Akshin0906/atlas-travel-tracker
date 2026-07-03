@@ -4,6 +4,7 @@ import { Minus, Plus, RotateCcw } from 'lucide-react'
 import { useContainerSize } from '../hooks/useContainerSize'
 import { useGeoData } from '../hooks/useGeoData'
 import { visibleCenterX } from '../lib/layout'
+import { pinchZoom, twoPointerDistance } from '../lib/pointers'
 import { clamp } from '../lib/utils'
 import { entityColors, visualStateFor } from '../lib/visuals'
 import { useTravelStore } from '../stores/travelStore'
@@ -47,6 +48,8 @@ export function GlobeView({
     key: string | null
     moved: boolean
   } | null>(null)
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>())
+  const pinchRef = useRef<{ distance: number; zoom: number } | null>(null)
   const frameRef = useRef<number | null>(null)
   const spinFrameRef = useRef<number | null>(null)
   const spinningRef = useRef(false)
@@ -105,6 +108,8 @@ export function GlobeView({
 
     if (spinFrameRef.current !== null) cancelAnimationFrame(spinFrameRef.current)
     dragRef.current = null
+    pointersRef.current.clear()
+    pinchRef.current = null
     spinningRef.current = true
     setSpinning(true)
 
@@ -197,9 +202,23 @@ export function GlobeView({
       : null
   }
 
+  function rememberPointer(event: PointerEvent<SVGSVGElement>) {
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+  }
+
+  function pinchDistance() {
+    return twoPointerDistance(pointersRef.current.values())
+  }
+
   function startDrag(event: PointerEvent<SVGSVGElement>) {
     if (spinningRef.current) return
     event.currentTarget.setPointerCapture(event.pointerId)
+    rememberPointer(event)
+    if (pointersRef.current.size >= 2) {
+      pinchRef.current = { distance: pinchDistance(), zoom }
+      dragRef.current = null
+      return
+    }
     dragRef.current = {
       x: event.clientX,
       y: event.clientY,
@@ -211,6 +230,13 @@ export function GlobeView({
 
   function drag(event: PointerEvent<SVGSVGElement>) {
     if (spinningRef.current) return
+    if (!pointersRef.current.has(event.pointerId)) return
+    rememberPointer(event)
+    if (pinchRef.current && pointersRef.current.size >= 2) {
+      const distance = pinchDistance()
+      updateZoom(pinchZoom(pinchRef.current.zoom, pinchRef.current.distance, distance))
+      return
+    }
     const start = dragRef.current
     if (!start) return
     const x = event.clientX - start.x
@@ -227,9 +253,16 @@ export function GlobeView({
 
   function endDrag(event: PointerEvent<SVGSVGElement>) {
     if (spinningRef.current) return
+    const wasPinching = pinchRef.current !== null || pointersRef.current.size > 1
+    releasePointer(event)
+    pointersRef.current.delete(event.pointerId)
+    if (wasPinching) {
+      if (pointersRef.current.size < 2) pinchRef.current = null
+      dragRef.current = null
+      return
+    }
     const wasClick = dragRef.current?.moved === false
     const clickedKey = wasClick ? dragRef.current?.key ?? null : null
-    releasePointer(event)
     dragRef.current = null
     if (clickedKey) selectEntity(clickedKey, { focus: true })
     else if (wasClick) clearSelection()
@@ -238,6 +271,8 @@ export function GlobeView({
   function cancelDrag(event: PointerEvent<SVGSVGElement>) {
     if (spinningRef.current) return
     releasePointer(event)
+    pointersRef.current.delete(event.pointerId)
+    if (pointersRef.current.size < 2) pinchRef.current = null
     dragRef.current = null
   }
 
@@ -254,7 +289,7 @@ export function GlobeView({
       ) : path && projection ? (
         <>
         <svg
-          className={spinning ? 'absolute inset-0 cursor-wait' : 'absolute inset-0 cursor-grab active:cursor-grabbing'}
+          className={spinning ? 'absolute inset-0 touch-none cursor-wait' : 'absolute inset-0 touch-none cursor-grab active:cursor-grabbing'}
           width={width}
           height={height}
           viewBox={`0 0 ${width} ${height}`}

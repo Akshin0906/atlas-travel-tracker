@@ -18,6 +18,7 @@ function HomepageBackground() {
 export function ProfileScreen() {
   const chooseProfile = useAuthStore((state) => state.chooseProfile)
   const [stats, setStats] = useState<ProfileStatsById>(EMPTY_PROFILE_STATS_BY_ID)
+  const [statsLoaded, setStatsLoaded] = useState(false)
   const [statsFailed, setStatsFailed] = useState(false)
 
   useEffect(() => {
@@ -26,11 +27,15 @@ export function ProfileScreen() {
       .then((nextStats) => {
         if (!cancelled) {
           setStats(nextStats)
+          setStatsLoaded(true)
           setStatsFailed(false)
         }
       })
       .catch(() => {
-        if (!cancelled) setStatsFailed(true)
+        if (!cancelled) {
+          setStatsLoaded(true)
+          setStatsFailed(true)
+        }
       })
 
     return () => {
@@ -59,9 +64,9 @@ export function ProfileScreen() {
               <span className="text-center text-xs font-semibold uppercase tracking-wide text-blue-50">Akshin</span>
               <span className="justify-self-center rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 text-[10px] font-semibold text-slate-400">&amp;</span>
               <span className="text-center text-xs font-semibold uppercase tracking-wide text-red-50">Neha</span>
-              <StatRow label="Countries" akshin={stats.akshin.countries} neha={stats.neha.countries} />
+              <StatRow label="Countries" akshin={statsLoaded && !statsFailed ? stats.akshin.countries : null} neha={statsLoaded && !statsFailed ? stats.neha.countries : null} />
               <div className="col-span-3 my-3 border-t border-white/10" />
-              <StatRow label="U.S. States" akshin={stats.akshin.states} neha={stats.neha.states} />
+              <StatRow label="U.S. States" akshin={statsLoaded && !statsFailed ? stats.akshin.states : null} neha={statsLoaded && !statsFailed ? stats.neha.states : null} />
             </div>
             {statsFailed ? <p className="mt-3 text-xs text-slate-500">Stats unavailable right now.</p> : null}
           </section>
@@ -78,12 +83,12 @@ export function ProfileScreen() {
   )
 }
 
-function StatRow({ akshin, label, neha }: { akshin: number; label: string; neha: number }) {
+function StatRow({ akshin, label, neha }: { akshin: number | null; label: string; neha: number | null }) {
   return (
     <>
-      <div className="pt-4 text-center text-2xl font-semibold leading-none text-blue-100 tabular-nums sm:text-3xl">{akshin}</div>
+      <div className="pt-4 text-center text-2xl font-semibold leading-none text-blue-100 tabular-nums sm:text-3xl">{akshin ?? '--'}</div>
       <div className="pt-4 text-center text-[11px] font-medium uppercase leading-tight tracking-wide text-slate-500 sm:text-xs">{label}</div>
-      <div className="pt-4 text-center text-2xl font-semibold leading-none text-red-100 tabular-nums sm:text-3xl">{neha}</div>
+      <div className="pt-4 text-center text-2xl font-semibold leading-none text-red-100 tabular-nums sm:text-3xl">{neha ?? '--'}</div>
     </>
   )
 }

@@ -14,18 +14,17 @@ import { tourismByIso2 } from '../../data/tourismCountries'
 import { SEASON_LABELS } from '../../data/tags'
 import { cityOptionsForCountryCode, type CountryCityOption } from '../../lib/cities'
 import { entityFromKey } from '../../lib/entities'
+import { scoreNormalizedName } from '../../lib/search'
 import { normalizeText } from '../../lib/text'
 import { cn, flagEmoji, formatDate } from '../../lib/utils'
 import { useTravelStore } from '../../stores/travelStore'
 import { useUIStore } from '../../stores/uiStore'
-import type { TourismCity, VisitRecord } from '../../types'
+import type { TourismCity, TravelEntity, VisitRecord } from '../../types'
 import { Button, IconButton, Tag, ToggleSwitch } from '../ui'
 import { PanelShell } from './PanelShell'
 
-type DetailTab = 'track' | 'guide'
-
 export function DetailPanel() {
-  const { filters, selectedKey } = useUIStore()
+  const { detailTab, filters, selectedKey, setDetailTab, showToast } = useUIStore()
   const {
     addCity,
     addVisit,
@@ -36,15 +35,16 @@ export function DetailPanel() {
     setNotes,
     toggleFavorite,
     toggleVisited,
+    update,
     updateVisit,
   } = useTravelStore()
   const entity = selectedKey ? entityFromKey(selectedKey) : null
   const entry = entity ? entries[entity.key] : undefined
   const tourism = entity?.type === 'country' ? tourismByIso2.get(entity.countryCode) : undefined
+  const activeTab = entity?.type === 'country' ? detailTab : 'track'
   const [city, setCity] = useState('')
   const [citySuggestionsOpen, setCitySuggestionsOpen] = useState(false)
   const [notes, setLocalNotes] = useState(entry?.notes ?? '')
-  const [activeTab, setActiveTab] = useState<DetailTab>('track')
   const [openCity, setOpenCity] = useState<string | null>(null)
   const [prosOpen, setProsOpen] = useState(true)
   const [consOpen, setConsOpen] = useState(false)
@@ -55,7 +55,6 @@ export function DetailPanel() {
   }, [entry?.notes, selectedKey])
 
   useEffect(() => {
-    setActiveTab('track')
     setOpenCity(null)
     setProsOpen(true)
     setConsOpen(false)
@@ -90,13 +89,18 @@ export function DetailPanel() {
 
   const citySuggestions = useMemo(() => {
     const query = normalizeText(city)
-    return citySuggestionOptions
-      .filter((cityItem) => !savedCityNames.has(cityItem.normalizedName))
-      .filter((cityItem) => {
-        if (!query) return true
-        return cityItem.normalizedName.includes(query)
-      })
+    const options = citySuggestionOptions.filter((cityItem) => !savedCityNames.has(cityItem.normalizedName))
+    if (!query) return options.slice(0, 5)
+    return options
+      .map((cityItem) => ({ cityItem, score: scoreNormalizedName(query, cityItem.normalizedName) }))
+      .filter((item) => item.score > 0)
+      .sort((a, b) =>
+        b.score - a.score ||
+        a.cityItem.name.length - b.cityItem.name.length ||
+        a.cityItem.name.localeCompare(b.cityItem.name),
+      )
       .slice(0, 5)
+      .map((item) => item.cityItem)
   }, [city, citySuggestionOptions, savedCityNames])
 
   if (!entity) {
@@ -124,6 +128,37 @@ export function DetailPanel() {
     void updateVisit(entity, { ...visit, ...patch })
   }
 
+  async function removeCityWithUndo(name: string) {
+    if (!entity) return
+    const index = useTravelStore.getState().entries[entity.key]?.cities.findIndex((cityName) => cityName === name) ?? -1
+    await removeCity(entity, name)
+    showToast(`${name} removed`, { action: { label: 'Undo', onClick: () => restoreCity(entity, name, index) } })
+  }
+
+  function restoreCity(target: TravelEntity, name: string, index: number) {
+    const normalized = normalizeText(name)
+    const current = useTravelStore.getState().entries[target.key]?.cities ?? []
+    if (current.some((cityName) => normalizeText(cityName) === normalized)) return
+    const next = current.slice()
+    next.splice(index < 0 ? next.length : Math.min(index, next.length), 0, name)
+    void update(target, { cities: next })
+  }
+
+  async function removeVisitWithUndo(visit: VisitRecord) {
+    if (!entity) return
+    const index = useTravelStore.getState().entries[entity.key]?.visits.findIndex((item) => item.id === visit.id) ?? -1
+    await removeVisit(entity, visit.id)
+    showToast('Visit removed', { action: { label: 'Undo', onClick: () => restoreVisit(entity, visit, index) } })
+  }
+
+  function restoreVisit(target: TravelEntity, visit: VisitRecord, index: number) {
+    const current = useTravelStore.getState().entries[target.key]?.visits ?? []
+    const withoutVisit = current.filter((item) => item.id !== visit.id)
+    const next = withoutVisit.slice()
+    next.splice(index < 0 ? next.length : Math.min(index, next.length), 0, visit)
+    void update(target, { visits: next })
+  }
+
   return (
     <PanelShell
       title={`${entity.type === 'country' ? flagEmoji(entity.countryCode) : ''} ${entity.name}`.trim()}
@@ -132,10 +167,10 @@ export function DetailPanel() {
       <div className="space-y-4">
         {entity.type === 'country' ? (
           <div role="tablist" aria-label="Country details" className="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-black/20 p-1">
-            <TabButton active={activeTab === 'track'} icon={ClipboardList} onClick={() => setActiveTab('track')}>
+            <TabButton active={activeTab === 'track'} icon={ClipboardList} onClick={() => setDetailTab('track')}>
               Track
             </TabButton>
-            <TabButton active={activeTab === 'guide'} icon={MapPinned} onClick={() => setActiveTab('guide')}>
+            <TabButton active={activeTab === 'guide'} icon={MapPinned} onClick={() => setDetailTab('guide')}>
               Guide
             </TabButton>
           </div>
@@ -204,8 +239,9 @@ export function DetailPanel() {
                   entry?.cities.map((name) => (
                     <button
                       key={name}
+                      aria-label={`Remove ${name}`}
                       className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-2 py-1 text-xs text-slate-200"
-                      onClick={() => void removeCity(entity, name)}
+                      onClick={() => void removeCityWithUndo(name)}
                     >
                       {name}
                       <Trash2 aria-hidden className="h-3 w-3 text-slate-500" />
@@ -246,7 +282,7 @@ export function DetailPanel() {
                       <span className="text-xs text-slate-500">
                         {visit.startDate ? formatDate(visit.startDate) : 'Optional dates'}
                       </span>
-                      <IconButton icon={Trash2} label="Remove visit" onClick={() => void removeVisit(entity, visit.id)} className="h-8 w-8" />
+                      <IconButton icon={Trash2} label="Remove visit" onClick={() => void removeVisitWithUndo(visit)} className="h-8 w-8" />
                     </div>
                   </div>
                 ))}

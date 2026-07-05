@@ -11,7 +11,16 @@ export function SettingsPanel() {
   const lock = useAuthStore((state) => state.lock)
   const selectedProfile = useAuthStore((state) => state.selectedProfile)
   const { backend, entries } = useTravelStore()
-  const { setShowFavorites, setShowUSStates, setShowVisited, showFavorites, showUSStates, showVisited } = useUIStore()
+  const {
+    setShowCityPins,
+    setShowFavorites,
+    setShowUSStates,
+    setShowVisited,
+    showCityPins,
+    showFavorites,
+    showUSStates,
+    showVisited,
+  } = useUIStore()
 
   return (
     <PanelShell title="Settings" subtitle={`Storage: ${backend}`}>
@@ -19,6 +28,7 @@ export function SettingsPanel() {
         <ToggleSwitch checked={showVisited} onChange={setShowVisited} label="Visited highlighting" />
         <ToggleSwitch checked={showFavorites} onChange={setShowFavorites} label="Favorite highlighting" />
         <ToggleSwitch checked={showUSStates} onChange={setShowUSStates} label="US state layer" description="Show all 50 states as selectable regions." />
+        <ToggleSwitch checked={showCityPins} onChange={setShowCityPins} label="City pins" description="Resolve saved city tags into map pins." />
 
         <Button icon={Download} onClick={() => downloadJson('atlas-travel-entries.json', Object.values(entries))} className="w-full">
           Export entries JSON

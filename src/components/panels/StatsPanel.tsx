@@ -12,7 +12,7 @@ export function StatsPanel() {
 
   return (
     <PanelShell title="Stats" subtitle="Your personal travel snapshot">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Stat icon={Globe2} label="Independent countries visited" value={`${stats.countriesVisited}/${stats.countriesTotal}`} detail={`${stats.countriesPct}% · ${stats.countriesTotal} independent`} percent={stats.countriesPct} />
         <Stat icon={MapPinned} label="US states visited" value={`${stats.statesVisited}/${stats.statesTotal}`} detail={`${stats.statesPct}%`} percent={stats.statesPct} />
         <Stat icon={Heart} label="Favorites" value={`${stats.favoriteCountries + stats.favoriteStates}`} detail="countries + states" />

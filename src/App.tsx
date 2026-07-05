@@ -33,8 +33,8 @@ export function App() {
   const status = useTravelStore((state) => state.status)
   const saveState = useTravelStore((state) => state.saveState)
   const error = useTravelStore((state) => state.error)
-  const { dismissToast, filters, openPanel, openSearch, selectEntity, setViewMode, showToast, toast, viewMode } = useUIStore()
-  const cityPins = useCityPins(entries)
+  const { dismissToast, filters, openPanel, openSearch, selectEntity, setViewMode, showCityPins, showToast, toast, viewMode } = useUIStore()
+  const cityPins = useCityPins(showCityPins ? entries : {})
   const [matchedKeys, setMatchedKeys] = useState<Set<string> | null>(null)
   const [randomDestinationRequest, setRandomDestinationRequest] = useState<RandomDestinationRequest | null>(null)
   const [randomDestinationPending, setRandomDestinationPending] = useState(false)
@@ -191,7 +191,7 @@ export function App() {
         </div>
       </div>
 
-      <div className="fixed bottom-40 left-4 z-30 flex flex-col gap-2 sm:bottom-24">
+      <div className="fixed bottom-40 left-4 z-30 hidden flex-col gap-2 sm:bottom-24 sm:flex">
         <IconButton
           icon={CircleUserRound}
           label="Switch user"

@@ -17,6 +17,7 @@ export function Button({ icon: Icon, active, className, children, ...props }: Bu
           : 'border-white/10 bg-white/[0.06] text-slate-200 hover:bg-white/[0.10]',
         className,
       )}
+      aria-pressed={active === undefined ? undefined : active}
       {...props}
     >
       {Icon ? <Icon aria-hidden className="h-4 w-4" /> : null}
@@ -43,6 +44,7 @@ export function IconButton({ icon: Icon, label, active, className, ...props }: I
           : 'border-white/10 bg-white/[0.06] text-slate-300 hover:bg-white/[0.10]',
         className,
       )}
+      aria-pressed={active === undefined ? undefined : active}
       {...props}
     >
       <Icon aria-hidden className="h-4 w-4" />

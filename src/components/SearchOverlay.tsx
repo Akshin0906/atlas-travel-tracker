@@ -87,6 +87,8 @@ export function SearchOverlay() {
       : searchMode === 'add-favorite'
         ? 'Add favorite country, state, or city'
         : 'Search countries, states, and cities'
+  const placeholder =
+    searchMode === 'add-visited' ? 'Add visited place' : searchMode === 'add-favorite' ? 'Add favorite place' : 'Search places'
   const actionLabel =
     searchMode === 'add-visited' ? 'Mark visited' : searchMode === 'add-favorite' ? 'Add favorite' : 'Open'
   const ActionIcon = searchMode === 'add-visited' ? CheckCircle2 : searchMode === 'add-favorite' ? Heart : ArrowRight
@@ -105,7 +107,7 @@ export function SearchOverlay() {
             }}
             onKeyDown={onKeyDown}
             aria-label={title}
-            placeholder={title}
+            placeholder={placeholder}
             className="h-11 flex-1 bg-transparent text-lg text-white placeholder:text-slate-500 focus:outline-none"
           />
           <span className="hidden rounded-full border border-white/10 bg-white/[0.06] px-2 py-1 text-xs text-slate-300 sm:inline-flex">

@@ -92,6 +92,7 @@ export const useTravelStore = create<TravelState>((set, get) => ({
 
   update: async (entity, patch) => {
     const { entries } = get()
+    const previous = entries[entity.key]
     const next = mergeEntry(entries[entity.key], entity, patch)
     const shouldDelete = isEmptyEntry(next)
 
@@ -112,7 +113,17 @@ export const useTravelStore = create<TravelState>((set, get) => ({
         if (useTravelStore.getState().saveState === 'saved') set({ saveState: 'idle' })
       }, 2000)
     } catch (err) {
-      set({ saveState: 'error', error: err instanceof Error ? err.message : String(err) })
+      const error = err instanceof Error ? err.message : String(err)
+      set((state) => {
+        const current = state.entries[entity.key]
+        const stillShowingFailedChange = shouldDelete ? current === undefined : current === next
+        if (!stillShowingFailedChange) return { saveState: 'error', error }
+
+        const updated = { ...state.entries }
+        if (previous) updated[entity.key] = previous
+        else delete updated[entity.key]
+        return { entries: updated, saveState: 'error', error }
+      })
     }
   },
 

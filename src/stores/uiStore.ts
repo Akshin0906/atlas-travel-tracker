@@ -31,6 +31,7 @@ interface UIState {
   showVisited: boolean
   showFavorites: boolean
   showUSStates: boolean
+  showCityPins: boolean
   filters: FilterState
   toast: Toast | null
 
@@ -45,6 +46,7 @@ interface UIState {
   setShowVisited: (v: boolean) => void
   setShowFavorites: (v: boolean) => void
   setShowUSStates: (v: boolean) => void
+  setShowCityPins: (v: boolean) => void
   setFilters: (patch: Partial<FilterState>) => void
   resetFilters: () => void
   showToast: (message: string, options?: Omit<Toast, 'id' | 'message'>) => void
@@ -57,7 +59,7 @@ const TOAST_DURATION_MS = 4000
 
 export const useUIStore = create<UIState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       viewMode: 'globe',
       panel: null,
       selectedKey: null,
@@ -68,12 +70,21 @@ export const useUIStore = create<UIState>()(
       showVisited: true,
       showFavorites: true,
       showUSStates: true,
+      showCityPins: false,
       filters: defaultFilters,
       toast: null,
 
       setViewMode: (viewMode) => set({ viewMode }),
 
-      openPanel: (panel) => set({ panel: get().panel === panel ? null : panel, searchOpen: false }),
+      openPanel: (panel) =>
+        set((state) => {
+          const nextPanel = state.panel === panel ? null : panel
+          return {
+            panel: nextPanel,
+            searchOpen: false,
+            selectedKey: state.panel === 'detail' && nextPanel !== 'detail' ? null : state.selectedKey,
+          }
+        }),
 
       closePanel: () =>
         set((state) => ({
@@ -107,6 +118,7 @@ export const useUIStore = create<UIState>()(
       setShowVisited: (showVisited) => set({ showVisited }),
       setShowFavorites: (showFavorites) => set({ showFavorites }),
       setShowUSStates: (showUSStates) => set({ showUSStates }),
+      setShowCityPins: (showCityPins) => set({ showCityPins }),
 
       setFilters: (patch) => set((state) => ({ filters: { ...state.filters, ...patch } })),
 
@@ -131,6 +143,7 @@ export const useUIStore = create<UIState>()(
         showVisited: state.showVisited,
         showFavorites: state.showFavorites,
         showUSStates: state.showUSStates,
+        showCityPins: state.showCityPins,
       }),
     },
   ),

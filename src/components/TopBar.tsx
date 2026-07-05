@@ -7,6 +7,7 @@ import {
   Map,
   Plus,
   Search,
+  Settings,
   SlidersHorizontal,
   Star,
 } from 'lucide-react'
@@ -29,6 +30,7 @@ export function TopBar({ randomDestinationPending, onRandomDestination }: TopBar
     showVisited,
     viewMode,
   } = useUIStore()
+  const mobileNavButtonClass = 'h-9 w-9 border-0 bg-transparent min-[360px]:h-10 min-[360px]:w-10'
 
   return (
     <>
@@ -129,21 +131,22 @@ export function TopBar({ randomDestinationPending, onRandomDestination }: TopBar
         </div>
       </header>
 
-      <nav aria-label="Atlas actions" className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4 pb-4 sm:hidden">
-        <div className="glass pointer-events-auto mx-auto flex max-w-md items-center justify-between gap-1 rounded-2xl p-1.5">
-          <IconButton icon={Plus} label="Add visited" onClick={() => openSearch('add-visited')} className="h-10 w-10 border-0 bg-transparent" />
-          <IconButton icon={Heart} label="Add favorite" onClick={() => openSearch('add-favorite')} className="h-10 w-10 border-0 bg-transparent" />
-          <IconButton icon={Search} label="Search" onClick={() => openSearch('select')} className="h-10 w-10 border-0 bg-transparent" />
-          <IconButton icon={SlidersHorizontal} label="Filters" onClick={() => openPanel('filters')} className="h-10 w-10 border-0 bg-transparent" />
-          <IconButton icon={BarChart3} label="Stats" onClick={() => openPanel('stats')} className="h-10 w-10 border-0 bg-transparent" />
-          <IconButton icon={Star} label="Favorites" onClick={() => openPanel('favorites')} className="h-10 w-10 border-0 bg-transparent" />
+      <nav aria-label="Atlas actions" className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-2 pb-3 sm:hidden">
+        <div className="glass pointer-events-auto mx-auto flex max-w-md items-center justify-between gap-0 rounded-2xl p-1">
+          <IconButton icon={Plus} label="Add visited" onClick={() => openSearch('add-visited')} className={mobileNavButtonClass} />
+          <IconButton icon={Heart} label="Add favorite" onClick={() => openSearch('add-favorite')} className={mobileNavButtonClass} />
+          <IconButton icon={Search} label="Search" onClick={() => openSearch('select')} className={mobileNavButtonClass} />
+          <IconButton icon={SlidersHorizontal} label="Filters" onClick={() => openPanel('filters')} className={mobileNavButtonClass} />
+          <IconButton icon={BarChart3} label="Stats" onClick={() => openPanel('stats')} className={mobileNavButtonClass} />
+          <IconButton icon={Star} label="Favorites" onClick={() => openPanel('favorites')} className={mobileNavButtonClass} />
+          <IconButton icon={Settings} label="Settings" onClick={() => openPanel('settings')} className={mobileNavButtonClass} />
           <IconButton
             icon={Dice5}
             label="Random country"
             active={randomDestinationPending}
             disabled={randomDestinationPending}
             onClick={onRandomDestination}
-            className="h-10 w-10 border-0 bg-transparent"
+            className={mobileNavButtonClass}
           />
         </div>
       </nav>

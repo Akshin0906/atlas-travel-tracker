@@ -102,6 +102,7 @@ function FilterButton({ active, children, onClick }: { active: boolean; children
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={onClick}
       className={cn(
         'rounded-full border px-3 py-1.5 text-xs capitalize transition',
